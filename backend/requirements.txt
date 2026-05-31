@@ -2,7 +2,9 @@ Flask==3.0.2
 Flask-CORS==4.0.0
 pydantic==2.6.1
 scipy==1.12.0
-pandas==2.2.0
-requests==2.31.0
-gunicorn==21.2.0
 openai==1.12.0
+requests==2.31.0
+numpy==1.26.4
+transformers==4.38.1
+torch==2.2.1 --extra-index-url https://download.pytorch.org/whl/cpu
+Pillow==10.2.0
