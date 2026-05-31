@@ -1,4 +1,23 @@
 # Seed data for immediate local and deployed presentation
+
+mock_coastal_dem = [
+    {
+        "name": "Palisadoes Spit Flood Zone Delta",
+        "elevation_m": 0.5,
+        "polygon_coordinates": [[
+            [-76.76, 17.93], [-76.74, 17.93], [-76.74, 17.95], [-76.76, 17.95], [-76.76, 17.93]
+        ]]
+    },
+    {
+        "name": "Portmore Low-Lying Coastal Buffer",
+        "elevation_m": 1.5,
+        "polygon_coordinates": [[
+            [-76.90, 17.93], [-76.86, 17.93], [-76.86, 17.96], [-76.90, 17.96], [-76.90, 17.93]
+        ]]
+    }
+]
+
+
 mock_ocean_anomalies = [
     {
         "name": "Caribbean Coral Bleaching Cluster A", "coordinates": [-76.80, 17.90], "temp_anomaly": 3.1, "plastic_density": 450.2
