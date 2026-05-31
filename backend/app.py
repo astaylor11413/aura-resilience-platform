@@ -27,7 +27,8 @@ print("Loading Aura Multi-Modal AI Engines...")
 try:
     triage_pipeline = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli", device=-1)
     vision_pipeline = pipeline("image-classification", model="google/vit-base-patch16-224", device=-1)
-    playbook_pipeline = pipeline("text-generation", model="Qwen/Qwen2.5-0.5B-Instruct", device=-1)
+    playbook_pipeline = pipeline("text-generation", model="sshleifer/distilbart-cnn-12-6", device=-1)
+    
     print("✓ Local NLP, Vision, and Playbook Engines Online.")
 except Exception as e:
     print("Local Transformers Initialization Warning:", e)
