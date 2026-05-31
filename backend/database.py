@@ -2,23 +2,27 @@
 mock_grid_substations = [
     {
         "id": "sub-01", 
+        "graph_index": 0, # Added for GNN alignment
         "name": "Kingston General Hospital Backup Node", 
         "type": "Critical-Hospital-Node", 
         "coordinates": [-76.78, 17.97]
     },
     {
         "id": "sub-02", 
+        "graph_index": 1, # Added for GNN alignment
         "name": "Palisadoes Spit Main Transmission Feed", 
         "type": "Main-Transmission", 
         "coordinates": [-76.75, 17.94]
     },
     {
         "id": "sub-03", 
+        "graph_index": 2, # Added for GNN alignment
         "name": "Portmore Micro-Wind Turbine Array A", 
         "type": "Microgrid-Hub", 
         "coordinates": [-76.88, 17.95]
     }
 ]
+
 mock_coastal_dem = [
     {
         "name": "Palisadoes Spit Flood Zone Delta",
@@ -43,7 +47,6 @@ mock_coastal_dem = [
         ]]
     }
 ]
-
 
 mock_ocean_anomalies = [
     {
@@ -70,7 +73,7 @@ mock_supply_db = [
     {
         "restaurant_id": "rest-01",
         "restaurant_name": "Harlem Community Kitchen",
-        "coordinates": [-73.94, 40.81], # [Lng, Lat]
+        "coordinates": [-73.94, 40.81],
         "meal_type": "Prepared Meals (Hot)",
         "portions_available": 250,
         "verification_permit": "NYC-HLTH-9941A"
@@ -103,4 +106,3 @@ mock_demand_db = [
         "urgency_level": "HIGH"
     }
 ]
-
