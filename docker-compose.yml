@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # Microgrid Engine Microservice
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+    networks:
+      - aura-network
+
+  # UI Client
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_BACKEND_URL=http://localhost:8000
+    networks:
+      - aura-network
+    depends_on:
+      - backend
+
+networks:
+  aura-network:
+    driver: bridge
