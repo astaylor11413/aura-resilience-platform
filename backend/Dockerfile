@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # Expose the designated internal routing engine port
-EXPOSE 8000
+EXPOSE 10000
 
 # Fire up Gunicorn as the WSGI worker server
 CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app", "--timeout", "180"]
