@@ -168,17 +168,17 @@ export default function App() {
       </header>
 
       {/* Main Container Workspace */}
-      <div style={STYLES.mainBody} className="flex-1 flex flex-col md:flex-row">
+      <div style={{ flex: 1, display: 'flex', flexDirection: window.innerWidth > 768 ? 'row' : 'column', overflow: 'hidden', position: 'relative' }}>
         
-        {/* Left Side Menu Controls Dashboard */}
-        <div style={STYLES.panel} className={`${activeTab === 'controls' ? 'flex' : 'hidden md:flex'}`}>
+        {/* Left Side Menu Controls Dashboard (Always visible on desktop screens) */}
+        <div style={{ ...STYLES.panel, display: activeTab === 'controls' || window.innerWidth > 768 ? 'flex' : 'none' }}>
           
           <button onClick={triggerResilientOrchestrationStory} style={STYLES.btnDanger}>
             <ShieldAlert size={18} /> <span>Simulate Hurricane Impact</span>
           </button>
 
           <div style={STYLES.cardMetric}>
-            <span style={{ fontSize: '10px', fontWeight: '700', uppercase: 'true', trackingWider: 'true', color: '#16a34a', display: 'block', marginBottom: '4px', letterSpacing: '0.05em' }}>BACKUP GENERATION OUTPUT</span>
+            <span style={{ fontSize: '10px', fontWeight: '700', color: '#16a34a', display: 'block', marginBottom: '4px', letterSpacing: '0.05em' }}>BACKUP GENERATION OUTPUT</span>
             <div style={{ fontSize: '24px', fontWeight: '800', color: '#16a34a' }}>
               {activeOutputKw.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '500', color: '#475569' }}>kW Active</span>
             </div>
@@ -207,7 +207,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Ingestion Report Core Form */}
+          {/* Ingestion Report Form */}
           <div style={STYLES.cardSection}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
               <FileText size={14} style={{ color: '#4f46e5' }} />
@@ -230,7 +230,6 @@ export default function App() {
             </form>
           </div>
 
-          {/* Tactical Action Directives Output */}
           {playbookResult && (
             <div style={STYLES.cardDirective}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16a34a', marginBottom: '8px' }}>
@@ -245,7 +244,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Infrastructure Health Logger */}
+          {/* Infrastructure Health Tracker*/}
           <div style={STYLES.cardSection}>
             <h4 style={{ fontSize: '11px', fontWeight: '700', margin: '0 0 4px 0', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Local Infrastructure Status</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -267,20 +266,21 @@ export default function App() {
               })}
             </div>
           </div>
-
         </div>
 
         {/* Right Side Interactive Mapbox Frame */}
-        <div className={`flex-1 relative min-h-[50vh] md:h-[calc(100vh-73px)] ${activeTab === 'map' ? 'block' : 'hidden md:block'}`}>
+        <div style={{ flex: 1, position: 'relative', height: 'calc(100vh - 73px)', display: activeTab === 'map' || window.innerWidth > 768 ? 'block' : 'none' }}>
           <Map 
             ref={mapRef}
-            {...viewState} onMove={evt => setViewState(evt.viewState)} 
+            {...viewState} 
+            onMove={evt => setViewState(evt.viewState)} 
             mapStyle="mapbox://styles/mapbox/dark-v11" 
             mapboxAccessToken={MAPBOX_TOKEN}
+            style={{ width: '100%', height: '100%' }}
           >
             {floodGeoJson && (
               <Source id="flood" type="geojson" data={floodGeoJson}>
-                <Layer type="fill" paint={{ 'fill-color': '#e11d48', 'fill-opacity': 0.18 }} />
+                <Layer type="fill" paint={{ 'fill-color': '#e11d48', 'fill-opacity': 0.25 }} />
               </Source>
             )}
             {gridData?.assets?.map(asset => (
@@ -297,6 +297,7 @@ export default function App() {
             ))}
           </Map>
         </div>
+      </div>
 
         {/* Mobile View Navigation Toggle Sticky footer */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex z-50 shadow-lg">
