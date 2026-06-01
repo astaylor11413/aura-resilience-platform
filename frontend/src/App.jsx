@@ -262,6 +262,28 @@ export default function App() {
     return { type: 'FeatureCollection', features: processedFeatures };
   })();
 
+  // Defensively compile raw marine telemetry arrays into standard GeoJSON features
+  const compiledMarineGeoJson = (() => {
+    if (!Array.isArray(marineAnomalies) || marineAnomalies.length === 0) {
+      return { type: 'FeatureCollection', features: [] };
+    }
+    
+    return {
+      type: "FeatureCollection",
+      features: marineAnomalies.map(anomaly => {
+        if (!anomaly || !anomaly.geometry) return null;
+        return {
+          type: "Feature",
+          geometry: anomaly.geometry,
+          properties: {
+            ...anomaly.properties,
+            status: anomaly.properties?.ai_watchdog_status || 'NOMINAL'
+          }
+        };
+      }).filter(Boolean)
+    };
+  })();
+
   return (
     <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
 
@@ -300,6 +322,39 @@ export default function App() {
                   'line-color': '#a855f7',
                   'line-width': 4,
                   'line-dasharray': [2, 2]
+                }}
+              />
+            </Source>
+          )}
+
+          {/* OCEANOGRAPHIC WATCHDOG TELEMETRY LAYER */}
+          {compiledMarineGeoJson?.features?.length > 0 && (
+            <Source type="geojson" data={compiledMarineGeoJson}>
+              {/* Dynamic polygon fill matching thermal zone coordinates */}
+              <Layer
+                id="marine-anomaly-polygon-layer"
+                type="fill"
+                paint={{
+                  'fill-color': '#f59e0b',
+                  'fill-opacity': 0.35,
+                  'fill-outline-color': '#fbbf24'
+                }}
+              />
+              {/* Core center pinpoint highlight tracking the epicenter */}
+              <Layer
+                id="marine-anomaly-glow-layer"
+                type="circle"
+                paint={{
+                  'circle-radius': [
+                    'match',
+                    ['get', 'status'],
+                    'CRITICAL_STORM_INCUBATION', 14,
+                    8
+                  ],
+                  'circle-color': '#f59e0b',
+                  'circle-opacity': 0.8,
+                  'circle-stroke-width': 2,
+                  'circle-stroke-color': '#ffffff'
                 }}
               />
             </Source>
