@@ -308,13 +308,21 @@ def calculate_optimal_routing():
 
 # Root Welcome Route
 @app.route('/', methods=['GET'])
-def index():
+def system_root_index():
+    """
+    Returns high-level runtime metadata parameters to confirm operational stability.
+    """
     return jsonify({
-        "status": "online",
-        "system": "Aura Resilience Engine API",
-        "version": "v3.0.0",
-        "documentation": "/api/v1/health"
-    }), 200
+        "status": "ONLINE",
+        "platform": "Aura Resilience Engine Orchestrator",
+        "architecture_tier": "Standard-2GB-Optimized",
+        "engine_version": "v3.1.0-production",
+        "active_endpoints": {
+            "health": "/api/v1/health",
+            "grid_simulation": "/api/v1/resilience/simulate-grid",
+            "satellite_telemetry": "/api/v1/ocean/telemetry",
+            "inundation_model": "/api/v1/hazard/inundation"
+        }
 
 if __name__ == '__main__':
     app.run(port=8000, debug=True)
