@@ -72,39 +72,39 @@ export default function App() {
         }
       });
     });
-    // Register the Substation Data Source
+    // Register the Substation Data Source 
     map.current.addSource('substations-source', {
       type: 'geojson',
       data: {
         type: 'FeatureCollection',
-        features: gridAssets.map(asset => ({
+        features: gridAssets.length > 0 ? gridAssets.map(asset => ({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: asset.coordinates },
-          properties: { id: asset.id, name: asset.name, status: asset.status }
-        }))
+          properties: { id: asset.id, name: asset.name, status: asset.status || 'NOMINAL' }
+        })) : []
       }
     });
 
-    //Add the Neon WebGL Circle Rendering Layer
+    //Add the Neon Circle Vector Layer 
     map.current.addLayer({
       id: 'substations-layer',
       type: 'circle',
       source: 'substations-source',
       paint: {
         'circle-radius': 7,
+        // Convert status string cleanly to lowercase, then execute a standard match sequence
         'circle-color': [
-          'case',
-          ['case-insensitive-match', ['get', 'status'], 'CRITICAL'], '#f43f5e', // Hot Neon Rose
-          ['case-insensitive-match', ['get', 'status'], 'SEVERED'], '#f43f5e',
-          ['case-insensitive-match', ['get', 'status'], 'ISLANDED'], '#38bdf8', // Autonomous Cyan
-          '#10b981' // Nominal Emerald Green
+          'match',
+          ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
+          'critical', '#f43f5e',  // Neon Rose
+          'severed', '#f43f5e',   // Neon Rose
+          'islanded', '#38bdf8',  // Autonomous Cyan
+          '#10b981'               // Nominal Emerald Green (Default fallback match)
         ],
         'circle-stroke-width': 2,
         'circle-stroke-color': '#0f172a'
       }
     });
-    
-  }, []);
 
   // 2. Telemetry Core Synchronizer: Grid Simulation & Physics GNN Data Pipeline
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function App() {
       })
       .catch(err => console.error("Grid Sync Fault:", err));
   }, [windSpeed, activeThreatIndex]);
-  
+
   useEffect(() => {
   if (map.current && map.current.getSource('substations-source') && gridAssets.length > 0) {
     map.current.getSource('substations-source').setData({
