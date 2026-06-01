@@ -336,11 +336,18 @@ export default function App() {
             <Source type="geojson" data={verifiedRoutingGeoJson}>
               <Layer
                 id="mutual-aid-layer"
-                type="fill"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
                 paint={{
-                  'fill-color': '#a855f7',
-                  'fill-opacity': 0.3,
-                  'fill-outline-color': '#d8b4fe'
+                  'line-width': 4,
+                  'line-color': [
+                    'match',
+                    ['get', 'urgency'],
+                    'CRITICAL', '#ef4444', // Red
+                    'HIGH', '#f59e0b',     // Amber
+                    '#10b981'              // Default Green
+                  ],
+                  'line-dasharray': [2, 2]
                 }}
               />
             </Source>
