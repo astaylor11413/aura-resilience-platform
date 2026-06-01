@@ -172,6 +172,25 @@ export default function App() {
     }));
   };
 
+  // Helper logic for varied telemetry shapes (Points vs Polygons)
+  const getFeatureCenter = (feat) => {
+    if (!feat || !feat.geometry) return [-76.78, 17.95];
+    const { type, coordinates } = feat.geometry;
+    
+    if (type === 'Point' && Array.isArray(coordinates)) {
+      return coordinates;
+    }
+    if ((type === 'Polygon' || type === 'MultiPolygon') && Array.isArray(coordinates)) {
+      try {
+        const firstRing = type === 'Polygon' ? coordinates[0] : coordinates[0][0];
+        if (Array.isArray(firstRing) && firstRing.length > 0) return firstRing[0];
+      } catch (e) {
+        return [-76.78, 17.95];
+      }
+    }
+    return [-76.78, 17.95];
+  };
+
   // ==========================================
   // SPATIAL GEOJSON COMPILERS
   // ==========================================
@@ -205,12 +224,42 @@ export default function App() {
               status: parsedStatusToken
             }
           };
-        }).filter(Boolean) // Discard any malformed node features dynamically
+        }).filter(Boolean)
       };
     } catch (e) {
       console.error("GeoJSON compiler failure exception caught:", e);
       return null;
     }
+  })();
+
+  // Defensively compile kitchen/shelter metadata into explicit LineString segments for Mapbox Layer support
+  const verifiedRoutingGeoJson = (() => {
+    if (!routingGeoJson || !Array.isArray(routingGeoJson.features)) {
+      return { type: 'FeatureCollection', features: [] };
+    }
+
+    const processedFeatures = routingGeoJson.features.map(route => {
+      if (route.geometry && (route.geometry.type === 'LineString' || route.geometry.type === 'MultiLineString')) {
+        return route;
+      }
+
+      const originCoords = route.properties?.origin_coordinates; 
+      const destCoords = route.properties?.destination_coordinates;
+
+      if (Array.isArray(originCoords) && Array.isArray(destCoords)) {
+        return {
+          type: "Feature",
+          properties: route.properties,
+          geometry: {
+            type: "LineString",
+            coordinates: [originCoords, destCoords]
+          }
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    return { type: 'FeatureCollection', features: processedFeatures };
   })();
 
   return (
@@ -241,8 +290,8 @@ export default function App() {
           )}
 
           {/* Mutual Aid Route Layer */}
-          {routingGeoJson?.features?.length > 0 && (
-            <Source type="geojson" data={routingGeoJson}>
+          {verifiedRoutingGeoJson?.features?.length > 0 && (
+            <Source type="geojson" data={verifiedRoutingGeoJson}>
               <Layer
                 id="mutual-aid-layer"
                 type="line"
@@ -409,7 +458,7 @@ export default function App() {
                 return (
                   <div
                     key={i}
-                    onClick={() => flyToSpatialCoordinate(feat?.geometry?.coordinates || [-76.78, 17.95])}
+                    onClick={() => flyToSpatialCoordinate(getFeatureCenter(feat))}
                     className="p-2 bg-slate-950/40 border border-white/5 rounded-lg flex justify-between items-center text-xs cursor-pointer hover:border-teal-500/40 hover:bg-slate-900/40 transition-all"
                   >
                     <div className="flex flex-col max-w-[180px]">
@@ -469,7 +518,7 @@ export default function App() {
             </div>
             <hr className="border-white/5" />
             <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
-              {routingGeoJson?.features?.map((route, idx) => {
+              {verifiedRoutingGeoJson?.features?.map((route, idx) => {
                 const props = route?.properties || {};
                 return (
                   <div key={idx} className="p-2 bg-slate-950/40 border border-white/5 rounded-lg flex flex-col gap-1 text-xs">
@@ -483,7 +532,7 @@ export default function App() {
                   </div>
                 );
               })}
-              {(!routingGeoJson?.features || routingGeoJson.features.length === 0) && (
+              {(!verifiedRoutingGeoJson?.features || verifiedRoutingGeoJson.features.length === 0) && (
                 <div className="text-center font-mono text-slate-500 py-4 text-xs">No active supply chains compiled</div>
               )}
             </div>
