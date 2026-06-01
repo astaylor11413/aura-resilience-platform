@@ -20,7 +20,7 @@ export default function App() {
   const [triageReport, setTriageReport] = useState(null);
   const [routingGeoJson, setRoutingGeoJson] = useState({ type: 'FeatureCollection', features: [] });
   const [inundationGeoJson, setInundationGeoJson] = useState({ type: 'FeatureCollection', features: [] });
-  
+
   // UI Operational States
   const [isProcessingReport, setIsProcessingReport] = useState(false);
   const [manualReportText, setManualReportText] = useState('');
@@ -71,7 +71,7 @@ export default function App() {
   const handleTriageSubmission = async (e) => {
     e.preventDefault();
     if (!manualReportText.trim()) return;
-    
+
     setIsProcessingReport(true);
     const formData = new FormData();
     formData.append("text", manualReportText);
@@ -102,7 +102,7 @@ export default function App() {
   const executeVoiceBroadcast = async (textToSpeak) => {
     if (airGapped) {
       const hostUtterance = new SpeechSynthesisUtterance(textToSpeak);
-      hostUtterance.rate = 0.95; 
+      hostUtterance.rate = 0.95;
       window.speechSynthesis.speak(hostUtterance);
       return;
     }
@@ -113,7 +113,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: textToSpeak })
       });
-      
+
       const blob = await res.blob();
       if (blob.type.includes("audio")) {
         const audioUrl = URL.createObjectURL(blob);
@@ -151,7 +151,7 @@ export default function App() {
 
   return (
     <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
-      
+
       {/* MAP UNDERLAY CANVAS - DECLARATIVE IMPLEMENTATION */}
       <div className="map-underlay-container absolute top-0 left-0 w-full h-full z-0">
         <Map
@@ -188,7 +188,7 @@ export default function App() {
             />
           </Source>
 
-          {/* Substations Layer */}
+          {/* SUBSTATIONS VECTOR LAYER */}
           <Source type="geojson" data={substationGeoJson}>
             <Layer
               id="substations-layer"
@@ -196,14 +196,18 @@ export default function App() {
               paint={{
                 'circle-radius': 7,
                 'circle-color': [
-                  'match',
-                  ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
-                  'offline', '#f43f5e',
-                  'critical', '#f43f5e',
-                  'severed', '#f43f5e',
-                  'isolated', '#38bdf8',
-                  'islanded', '#38bdf8',
-                  '#10b981' // Secure default fallback color (emerald-500)
+                  'case',
+                  // Check for DOWN, CRITICAL, or SEVERED variants
+                  ['inline', 'down', ['lowercase', ['get', 'status']]], '#f43f5e',
+                  ['inline', 'critical', ['lowercase', ['get', 'status']]], '#f43f5e',
+                  ['inline', 'severed', ['lowercase', ['get', 'status']]], '#f43f5e',
+
+                  // Check for ISLANDED variants
+                  ['inline', 'islanded', ['lowercase', ['get', 'status']]], '#38bdf8',
+                  ['inline', 'autonomous', ['lowercase', ['get', 'status']]], '#38bdf8',
+
+                  // Default color for ONLINE / NORMAL
+                  '#10b981'
                 ],
                 'circle-stroke-width': 2,
                 'circle-stroke-color': '#0f172a'
@@ -215,7 +219,7 @@ export default function App() {
 
       {/* SYSTEM CONTROLS FOREGROUND CONTAINER */}
       <div className="relative w-full h-full pointer-events-none z-30 flex flex-col justify-between">
-        
+
         {/* PLATFORM HEADER */}
         <header className="w-full h-14 bg-slate-900/85 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 pointer-events-auto">
           <div className="flex items-center gap-3">
@@ -235,7 +239,7 @@ export default function App() {
 
         {/* WORKSPACE MIDDLE LAYER HUD COMPONENT WRAPPERS */}
         <div className="w-full flex-grow relative px-5 py-4">
-          
+
           {/* PANEL A: ENVIRONMENTAL MATRIX CONTROLS */}
           <section className="aura-hud-panel panel-controls absolute top-4 left-5 w-80 p-4 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 pointer-events-auto flex flex-col gap-4">
             <div>
@@ -248,8 +252,8 @@ export default function App() {
                 <span className="text-slate-400">Sustained Wind Field:</span>
                 <span className="text-cyan-400 font-bold">{windSpeed} MPH</span>
               </div>
-              <input 
-                type="range" min="10" max="100" value={windSpeed} 
+              <input
+                type="range" min="10" max="100" value={windSpeed}
                 onChange={(e) => setWindSpeed(parseFloat(e.target.value))}
                 className="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
               />
@@ -259,8 +263,8 @@ export default function App() {
                 <span className="text-slate-400">Sea Level Surge:</span>
                 <span className="text-sky-400 font-bold">+{slrMeters.toFixed(1)}m</span>
               </div>
-              <input 
-                type="range" min="0.0" max="3.0" step="0.5" value={slrMeters} 
+              <input
+                type="range" min="0.0" max="3.0" step="0.5" value={slrMeters}
                 onChange={(e) => setSlrMeters(parseFloat(e.target.value))}
                 className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
               />
@@ -272,10 +276,10 @@ export default function App() {
                 <span className="text-[10px] text-slate-400">Enforce local execution</span>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" checked={airGapped} 
-                  onChange={(e) => setAirGapped(e.target.checked)} 
-                  className="sr-only peer" 
+                <input
+                  type="checkbox" checked={airGapped}
+                  onChange={(e) => setAirGapped(e.target.checked)}
+                  className="sr-only peer"
                 />
                 <div className="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 peer-checked:after:bg-amber-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500/20"></div>
               </label>
@@ -290,7 +294,7 @@ export default function App() {
                 <p className="text-[11px] text-slate-400">Calculated power capture: <span className="font-mono font-bold text-slate-200">{derOutput} kW</span></p>
               </div>
               {activeThreatIndex !== null && (
-                <button 
+                <button
                   onClick={() => setActiveThreatIndex(null)}
                   className="text-[10px] font-mono px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded hover:bg-rose-500/20"
                 >
@@ -304,13 +308,12 @@ export default function App() {
                 const isTargeted = statusStr.includes("CRITICAL") || statusStr.includes("SEVERED");
                 const isIslanded = statusStr.includes("ISLANDED");
                 return (
-                  <div 
-                    key={asset.id} 
+                  <div
+                    key={asset.id}
                     onClick={() => flyToSpatialCoordinate(asset.coordinates)}
-                    className={`p-2.5 bg-slate-950/50 border rounded-lg cursor-pointer flex flex-col justify-between transition-all ${
-                      isTargeted ? 'border-rose-500/40 bg-rose-950/10 hover:border-rose-400' :
-                      isIslanded ? 'border-blue-500/40 bg-blue-950/10 hover:border-blue-400' : 'border-white/5 hover:border-white/20'
-                    }`}
+                    className={`p-2.5 bg-slate-950/50 border rounded-lg cursor-pointer flex flex-col justify-between transition-all ${isTargeted ? 'border-rose-500/40 bg-rose-950/10 hover:border-rose-400' :
+                        isIslanded ? 'border-blue-500/40 bg-blue-950/10 hover:border-blue-400' : 'border-white/5 hover:border-white/20'
+                      }`}
                   >
                     <div>
                       <div className="flex justify-between items-start gap-1">
@@ -340,7 +343,7 @@ export default function App() {
                 const props = feat.properties || {};
                 const isCritical = props.ai_watchdog_status === "CRITICAL_STORM_INCUBATION";
                 return (
-                  <div 
+                  <div
                     key={i}
                     onClick={() => flyToSpatialCoordinate(feat.geometry?.coordinates || [-76.78, 17.95])}
                     className="p-2 bg-slate-950/40 border border-white/5 rounded-lg flex justify-between items-center text-xs cursor-pointer hover:border-teal-500/40 hover:bg-slate-900/40 transition-all"
@@ -374,8 +377,8 @@ export default function App() {
                 placeholder="Enter emergency transmission text or dialect logs (e.g., 'Palisadoes lines dem under water...')"
                 className="w-full h-16 bg-slate-950/70 border border-white/10 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 transition-all resize-none"
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isProcessingReport}
                 className="w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-white font-mono uppercase text-xs tracking-wider rounded-lg font-bold transition-all"
               >
