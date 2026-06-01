@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Map, { Source, Layer } from 'react-map-gl';
+import Map, { Source, Layer, Popup } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Retrieve MAPBOX token 
@@ -24,6 +24,9 @@ export default function App() {
   const [routingGeoJson, setRoutingGeoJson] = useState({ type: 'FeatureCollection', features: [] });
   const [inundationGeoJson, setInundationGeoJson] = useState({ type: 'FeatureCollection', features: [] });
 
+  // Interactive Hover State Matrix for Spatial Tooltips
+  const [hoveredFeature, setHoveredFeature] = useState(null);
+
   // UI Operational Flags
   const [isProcessingReport, setIsProcessingReport] = useState(false);
   const [manualReportText, setManualReportText] = useState('');
@@ -47,7 +50,6 @@ export default function App() {
       .then(res => res.json())
       .then(data => {
         if (data && typeof data === 'object') {
-          // Anticipate both payload structural options defensively
           if (Array.isArray(data.assets)) {
             setGridAssets(data.assets);
           } else if (data.assets && Array.isArray(data.assets.assets)) {
@@ -61,7 +63,7 @@ export default function App() {
       })
       .catch(err => {
         console.error("Grid Sync Fault [Recovered]:", err);
-        setGridAssets([]); // Fallback state execution to prevent rendering crashes
+        setGridAssets([]);
       });
   }, [windSpeed, activeThreatIndex]);
 
@@ -192,6 +194,24 @@ export default function App() {
   };
 
   // ==========================================
+  // INTERACTIVE HOVER MAP ENGINE LOGIC
+  // ==========================================
+  const onMapHover = (event) => {
+    const { features, lngLat } = event;
+    const targetPolygonFeature = features && features.find(f => f.layer.id === 'marine-anomaly-polygon-layer');
+    
+    if (targetPolygonFeature) {
+      setHoveredFeature({
+        lng: lngLat.lng,
+        lat: lngLat.lat,
+        properties: targetPolygonFeature.properties
+      });
+    } else {
+      setHoveredFeature(null);
+    }
+  };
+
+  // ==========================================
   // SPATIAL GEOJSON COMPILERS
   // ==========================================
   const compiledSubstationGeoJson = (() => {
@@ -232,7 +252,6 @@ export default function App() {
     }
   })();
 
-  // Defensively compile kitchen/shelter metadata into explicit LineString segments for Mapbox Layer support
   const verifiedRoutingGeoJson = (() => {
     if (!routingGeoJson || !Array.isArray(routingGeoJson.features)) {
       return { type: 'FeatureCollection', features: [] };
@@ -262,7 +281,6 @@ export default function App() {
     return { type: 'FeatureCollection', features: processedFeatures };
   })();
 
-  // Defensively compile raw marine telemetry arrays into standard GeoJSON features
   const compiledMarineGeoJson = (() => {
     if (!Array.isArray(marineAnomalies) || marineAnomalies.length === 0) {
       return { type: 'FeatureCollection', features: [] };
@@ -292,6 +310,8 @@ export default function App() {
         <Map
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
+          onMouseMove={onMapHover}
+          interactiveLayerIds={['marine-anomaly-polygon-layer']}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/dark-v11"
           style={{ width: '100%', height: '100%' }}
@@ -340,7 +360,7 @@ export default function App() {
                   'fill-outline-color': '#fbbf24'
                 }}
               />
-              {/* 3x Expanded, highly translucent regional aura pinpoint tracking impact zone radius */}
+              {/* regional aura pinpoint tracking impact zone radius */}
               <Layer
                 id="marine-anomaly-glow-layer"
                 type="circle"
@@ -383,6 +403,41 @@ export default function App() {
                 }}
               />
             </Source>
+          )}
+
+          {/* SPATIAL HOVER TOOLTIP POPUP */}
+          {hoveredFeature && (
+            <Popup
+              longitude={hoveredFeature.lng}
+              latitude={hoveredFeature.lat}
+              closeButton={false}
+              closeOnClick={false}
+              anchor="bottom"
+              className="z-50 pointer-events-none custom-map-popup"
+            >
+              <div className="p-3 bg-slate-900/95 backdrop-blur-md border border-amber-500/30 rounded-lg shadow-xl text-xs max-w-xs font-sans text-slate-100">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                  <span className="font-bold tracking-wide uppercase text-amber-400">
+                    {hoveredFeature.properties?.location_name || 'Anomalous Threat Zone'}
+                  </span>
+                </div>
+                <div className="space-y-1 text-slate-300">
+                  <div>
+                    <span className="text-slate-400 font-mono text-[10px] uppercase block">Risk Assessment</span>
+                    <span className="text-amber-300 font-medium">
+                      {hoveredFeature.properties?.status || 'STORM_INCUBATION_RISK'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center gap-4 pt-1 border-t border-white/5 font-mono text-[11px]">
+                    <span className="text-slate-400">Thermal Anomaly:</span>
+                    <span className="text-teal-400 font-bold">
+                      +{hoveredFeature.properties?.surface_temp_anomaly_celsius || 0}°C
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Popup>
           )}
         </Map>
       </div>
