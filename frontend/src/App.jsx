@@ -336,11 +336,11 @@ export default function App() {
                 type="fill"
                 paint={{
                   'fill-color': '#f59e0b',
-                  'fill-opacity': 0.2,
+                  'fill-opacity': 0.15,
                   'fill-outline-color': '#fbbf24'
                 }}
               />
-              {/* Expanded, translucent regional aura pinpoint tracking impact zone radius */}
+              {/* 3x Expanded, highly translucent regional aura pinpoint tracking impact zone radius */}
               <Layer
                 id="marine-anomaly-glow-layer"
                 type="circle"
@@ -349,15 +349,15 @@ export default function App() {
                     'interpolate',
                     ['exponential', 2],
                     ['zoom'],
-                    10, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 35, 20],
-                    13, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 70, 40],
-                    16, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 140, 80]
+                    10, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 105, 60],
+                    13, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 210, 120],
+                    16, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 420, 240]
                   ],
                   'circle-color': '#f59e0b',
-                  'circle-opacity': 0.25,
+                  'circle-opacity': 0.08,
                   'circle-stroke-width': 1.5,
                   'circle-stroke-color': '#fbbf24',
-                  'circle-stroke-opacity': 0.6
+                  'circle-stroke-opacity': 0.4
                 }}
               />
             </Source>
