@@ -327,7 +327,6 @@ def generate_dialect_broadcast():
 def calculate_optimal_routing():
     routes_geojson = {"type": "FeatureCollection", "features": []}
     
-    # Iterates through database lists to map human survival lines
     for kitchen in mock_supply_db:
         k_coords = kitchen["coordinates"]
         best_shelter = None
@@ -335,7 +334,6 @@ def calculate_optimal_routing():
         
         for shelter in mock_demand_db:
             s_coords = shelter["coordinates"]
-            # Apply Euclidean distance matrix geometry across coordinate pairs
             dst = distance.euclidean(k_coords, s_coords)
             if dst < min_dist:
                 min_dist = dst
@@ -347,7 +345,8 @@ def calculate_optimal_routing():
                 "properties": {
                     "origin_kitchen": kitchen["restaurant_name"],
                     "destination_shelter": best_shelter["shelter_name"],
-                    "permit_verification": kitchen["verification_permit"]
+                    "permit_verification": kitchen["verification_permit"],
+                    "urgency": best_shelter.get("urgency_level", "LOW")
                 },
                 "geometry": {
                     "type": "LineString",
