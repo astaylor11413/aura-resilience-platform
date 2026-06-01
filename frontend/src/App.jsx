@@ -3,7 +3,7 @@ import Map, { Source, Layer, Marker } from 'react-map-gl';
 import { Wind, Activity, Volume2, HardHat, Waves, ShieldAlert, Zap, Radio, Image } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_ACCESS_TOKEN';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiYXN0YXlsb3IxMTQxMyIsImEiOiJjbXB1cmpydmMxd3BuMnNwejZpaWo5ejExIn0.kxy1wEs_hpg5ZYB-2Z3daw';
 
 //Project base URL
 const BACKEND_API_BASE = "https://aura-resilience-platform-qa.onrender.com/";
