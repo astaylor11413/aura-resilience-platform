@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef} from 'react';
 import Map, { Source, Layer, Marker } from 'react-map-gl';
 import { 
   Wind, Activity, Volume2, ShieldAlert, Zap, Radio, 
@@ -37,6 +37,7 @@ const STYLES = {
 };
 
 export default function App() {
+  const mapRef = useRef(null);
   const [viewState, setViewState] = useState({ latitude: 17.96, longitude: -76.79, zoom: 9.2 });
   const [windSpeed, setWindSpeed] = useState(25);
   const [slrMeters, setSlrMeters] = useState(0.0);
@@ -73,6 +74,14 @@ export default function App() {
       .then(data => setFloodGeoJson(data))
       .catch(err => console.error("Inundation Link Error:", err));
   }, [slrMeters]);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.getMap().resize();
+      }, 100); // Small 100ms delay gives the browser time to paint the layout first
+    }
+  }, [gridData, activeTab]);
 
   const triggerResilientOrchestrationStory = () => {
     setWindSpeed(78);
@@ -264,6 +273,7 @@ export default function App() {
         {/* Right Side Interactive Mapbox Frame */}
         <div className={`flex-1 relative min-h-[50vh] md:h-[calc(100vh-73px)] ${activeTab === 'map' ? 'block' : 'hidden md:block'}`}>
           <Map 
+            ref={mapRef}
             {...viewState} onMove={evt => setViewState(evt.viewState)} 
             mapStyle="mapbox://styles/mapbox/light-v11" 
             mapboxAccessToken={MAPBOX_TOKEN}
