@@ -28,23 +28,27 @@ export default function App() {
   const [isProcessingReport, setIsProcessingReport] = useState(false);
   const [manualReportText, setManualReportText] = useState('');
 
- // 1. Initialize Mapbox Canvas Base Layer (RUNS EXACTLY ONCE ON MOUNT)
+ // Dedicated data holding variable for mapbox until rendered
+  const pendingData = useRef({ assets: [], inundation: null });
+
+  // 1. Unified Map Framework Engine & Event Lifecycle Pipeline
   useEffect(() => {
-    if (map.current) return; // Guard clause ensures single canvas context allocation
-    
+    if (map.current) return; // Prevent canvas double-allocation
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-76.78, 17.95], 
+      center: [-76.78, 17.95], // Jamaica Region Coordinates Baseline
       zoom: 11,
       pitch: 35
     });
-
+    
     map.current.on('load', () => {
-      // Register Inundation Source Baseline Layer
+      
+      // A. Register Inundation Layer Geometry
       map.current.addSource('inundation-source', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
+        data: pendingData.current.inundation || { type: 'FeatureCollection', features: [] }
       });
       map.current.addLayer({
         id: 'inundation-layer',
@@ -57,7 +61,7 @@ export default function App() {
         }
       });
 
-      // Register Logistics Route Source Baseline Layer
+      // B. Register Mutual Aid Logistics Paths Layer
       map.current.addSource('mutual-aid-source', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
@@ -74,13 +78,18 @@ export default function App() {
         }
       });
 
-      // CLEAN INITIALIZATION: Register empty point vector source matrix fallback
+      // C. Register Substation Vector Layer
       map.current.addSource('substations-source', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
+        data: {
+          type: 'FeatureCollection',
+          features: pendingData.current.assets.map(asset => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: asset.coordinates },
+            properties: { id: asset.id, name: asset.name, status: asset.status || 'NOMINAL' }
+          }))
+        }
       });
-
-      // Render Circle Canvas Points explicitly over baseline geometry sets
       map.current.addLayer({
         id: 'substations-layer',
         type: 'circle',
@@ -93,19 +102,21 @@ export default function App() {
             'critical', '#f43f5e',
             'severed', '#f43f5e',
             'islanded', '#38bdf8',
-            '#10b981' // Nominal Emerald Green Baseline Color
+            '#10b981'
           ],
           'circle-stroke-width': 2,
           'circle-stroke-color': '#0f172a'
         }
       });
     });
-
-  }, []); // EMPTY ARRAY: Keeps initialization separate from data streams
-
+  }, []);
 
   // 2. Real-Time Telemetry Synchronization Engine
   useEffect(() => {
+    // 1. Grab incoming asset state
+    pendingData.current.assets = gridAssets;
+
+    // 2. Send data down to the canvas map only if the map style has finished loading
     if (map.current && map.current.isStyleLoaded() && map.current.getSource('substations-source')) {
       map.current.getSource('substations-source').setData({
         type: 'FeatureCollection',
@@ -116,7 +127,7 @@ export default function App() {
         }))
       });
     }
-  }, [gridAssets]); // Executes instantly whenever dependencies refresh from sliders
+  }, [gridAssets]);
 
   useEffect(() => {
   if (map.current && map.current.getSource('substations-source') && gridAssets.length > 0) {
