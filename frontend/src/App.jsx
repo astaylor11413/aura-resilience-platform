@@ -198,10 +198,12 @@ export default function App() {
                 'circle-color': [
                   'match',
                   ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
+                  'offline', '#f43f5e',
                   'critical', '#f43f5e',
                   'severed', '#f43f5e',
+                  'isolated', '#38bdf8',
                   'islanded', '#38bdf8',
-                  '#10b981'
+                  '#10b981' // Secure default fallback color (emerald-500)
                 ],
                 'circle-stroke-width': 2,
                 'circle-stroke-color': '#0f172a'
