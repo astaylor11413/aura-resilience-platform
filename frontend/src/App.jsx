@@ -269,7 +269,7 @@ export default function App() {
           <Map 
             {...viewState} 
             onMove={evt => setViewState(evt.viewState)} 
-            mapStyle="mapbox://styles/mapbox/light-v11" # 🔥 Changed to light style for modern clarity
+            mapStyle="mapbox://styles/mapbox/light-v11" 
             mapboxAccessToken={MAPBOX_TOKEN}
           >
             {floodGeoJson && (
