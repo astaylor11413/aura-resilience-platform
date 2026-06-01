@@ -40,6 +40,20 @@ export default function App() {
   });
 
   // ==========================================
+  // MAP LOAD ENGINE
+  // ==========================================
+  const onMapLoad = (mapEvent) => {
+    const map = mapEvent.target;
+    // Register the directional arrow icon
+    map.loadImage('/arrow.png', (error, image) => {
+      if (error) console.error("Arrow icon not found in public folder");
+      else if (!map.hasImage('arrow-icon')) {
+        map.addImage('arrow-icon', image);
+      }
+    });
+  };
+
+  // ==========================================
   // DATA SYNCHRONIZATION PIPELINES
   // ==========================================
 
@@ -174,7 +188,6 @@ export default function App() {
     }));
   };
 
-  // Helper logic for varied telemetry shapes (Points vs Polygons)
   const getFeatureCenter = (feat) => {
     if (!feat || !feat.geometry) return [-76.78, 17.95];
     const { type, coordinates } = feat.geometry;
@@ -193,9 +206,6 @@ export default function App() {
     return [-76.78, 17.95];
   };
 
-  // ==========================================
-  // INTERACTIVE HOVER MAP ENGINE LOGIC
-  // ==========================================
   const onMapHover = (event) => {
     const { features, lngLat } = event;
     const targetPolygonFeature = features && features.find(f => f.layer.id === 'marine-anomaly-polygon-layer');
@@ -211,9 +221,6 @@ export default function App() {
     }
   };
 
-  // ==========================================
-  // SPATIAL GEOJSON COMPILERS
-  // ==========================================
   const compiledSubstationGeoJson = (() => {
     if (!Array.isArray(gridAssets) || gridAssets.length === 0) return null;
 
@@ -222,22 +229,16 @@ export default function App() {
         type: "FeatureCollection",
         features: gridAssets.map(asset => {
           if (!asset || !Array.isArray(asset.coordinates)) return null;
-
           const rawStatus = String(asset.status || 'nominal').toLowerCase();
           let parsedStatusToken = 'nominal';
-
           if (rawStatus.includes('down') || rawStatus.includes('critical') || rawStatus.includes('severed')) {
             parsedStatusToken = 'critical';
           } else if (rawStatus.includes('islanded') || rawStatus.includes('autonomous')) {
             parsedStatusToken = 'islanded';
           }
-
           return {
             type: "Feature",
-            geometry: {
-              type: "Point",
-              coordinates: asset.coordinates
-            },
+            geometry: { type: "Point", coordinates: asset.coordinates },
             properties: {
               id: asset.id || Math.random().toString(),
               name: asset.name || 'Unnamed Substation',
@@ -247,7 +248,6 @@ export default function App() {
         }).filter(Boolean)
       };
     } catch (e) {
-      console.error("GeoJSON compiler failure exception caught:", e);
       return null;
     }
   })();
@@ -256,28 +256,21 @@ export default function App() {
     if (!routingGeoJson || !Array.isArray(routingGeoJson.features)) {
       return { type: 'FeatureCollection', features: [] };
     }
-
     const processedFeatures = routingGeoJson.features.map(route => {
       if (route.geometry && (route.geometry.type === 'LineString' || route.geometry.type === 'MultiLineString')) {
         return route;
       }
-
       const originCoords = route.properties?.origin_coordinates;
       const destCoords = route.properties?.destination_coordinates;
-
       if (Array.isArray(originCoords) && Array.isArray(destCoords)) {
         return {
           type: "Feature",
           properties: route.properties,
-          geometry: {
-            type: "LineString",
-            coordinates: [originCoords, destCoords]
-          }
+          geometry: { type: "LineString", coordinates: [originCoords, destCoords] }
         };
       }
       return null;
     }).filter(Boolean);
-
     return { type: 'FeatureCollection', features: processedFeatures };
   })();
 
@@ -285,7 +278,6 @@ export default function App() {
     if (!Array.isArray(marineAnomalies) || marineAnomalies.length === 0) {
       return { type: 'FeatureCollection', features: [] };
     }
-
     return {
       type: "FeatureCollection",
       features: marineAnomalies.map(anomaly => {
@@ -293,10 +285,7 @@ export default function App() {
         return {
           type: "Feature",
           geometry: anomaly.geometry,
-          properties: {
-            ...anomaly.properties,
-            status: anomaly.properties?.ai_watchdog_status || 'NOMINAL'
-          }
+          properties: { ...anomaly.properties, status: anomaly.properties?.ai_watchdog_status || 'NOMINAL' }
         };
       }).filter(Boolean)
     };
@@ -311,6 +300,7 @@ export default function App() {
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
           onMouseMove={onMapHover}
+          onLoad={onMapLoad}
           interactiveLayerIds={['marine-anomaly-polygon-layer']}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/dark-v11"
@@ -331,7 +321,7 @@ export default function App() {
             </Source>
           )}
 
-          {/* Mutual Aid Route Layer */}
+          {/* Mutual Aid Route Layer with Arrows */}
           {verifiedRoutingGeoJson?.features?.length > 0 && (
             <Source type="geojson" data={verifiedRoutingGeoJson}>
               <Layer
@@ -341,13 +331,23 @@ export default function App() {
                 paint={{
                   'line-width': 4,
                   'line-color': [
-                    'match',
-                    ['get', 'urgency'],
-                    'CRITICAL', '#ef4444', // Red
-                    'HIGH', '#f59e0b',     // Amber
-                    '#10b981'              // Default Green
+                    'match', ['get', 'urgency'],
+                    'CRITICAL', '#ef4444',
+                    'HIGH', '#f59e0b',
+                    '#10b981'
                   ],
                   'line-dasharray': [2, 2]
+                }}
+              />
+              <Layer
+                id="mutual-aid-arrows"
+                type="symbol"
+                layout={{
+                  'symbol-placement': 'line',
+                  'symbol-spacing': 100,
+                  'icon-image': 'arrow-icon',
+                  'icon-size': 0.6,
+                  'icon-rotation-alignment': 'map'
                 }}
               />
             </Source>
@@ -356,25 +356,17 @@ export default function App() {
           {/* OCEANOGRAPHIC WATCHDOG TELEMETRY LAYER */}
           {compiledMarineGeoJson?.features?.length > 0 && (
             <Source type="geojson" data={compiledMarineGeoJson}>
-              {/* Dynamic polygon fill matching thermal zone coordinates */}
               <Layer
                 id="marine-anomaly-polygon-layer"
                 type="fill"
-                paint={{
-                  'fill-color': '#f59e0b',
-                  'fill-opacity': 0.15,
-                  'fill-outline-color': '#fbbf24'
-                }}
+                paint={{ 'fill-color': '#f59e0b', 'fill-opacity': 0.15, 'fill-outline-color': '#fbbf24' }}
               />
-              {/* regional aura pinpoint tracking impact zone radius */}
               <Layer
                 id="marine-anomaly-glow-layer"
                 type="circle"
                 paint={{
                   'circle-radius': [
-                    'interpolate',
-                    ['exponential', 2],
-                    ['zoom'],
+                    'interpolate', ['exponential', 2], ['zoom'],
                     10, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 105, 60],
                     13, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 210, 120],
                     16, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 420, 240]
@@ -398,8 +390,7 @@ export default function App() {
                 paint={{
                   'circle-radius': 8,
                   'circle-color': [
-                    'match',
-                    ['get', 'status'],
+                    'match', ['get', 'status'],
                     'critical', '#e11d48',
                     'islanded', '#38bdf8',
                     '#16a34a'
@@ -450,8 +441,6 @@ export default function App() {
 
       {/* SYSTEM CONTROLS FOREGROUND HUD CONTAINER */}
       <div className="relative w-full h-full pointer-events-none z-30 flex flex-col justify-between">
-
-        {/* PLATFORM HEADER */}
         <header className="w-full h-14 bg-slate-900/85 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 pointer-events-auto">
           <div className="flex items-center gap-3">
             <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse" />
@@ -468,10 +457,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* WORKSPACE HUD LAYOUT COMPONENTS */}
         <div className="w-full flex-grow relative px-5 py-4">
-
-          {/* PANEL A: ENVIRONMENTAL MATRIX CONTROLS */}
           <section className="aura-hud-panel panel-controls absolute top-4 left-5 w-80 p-4 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 pointer-events-auto flex flex-col gap-4">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-1">Environmental Vectors</h2>
@@ -517,7 +503,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* PANEL B: GNN GRID ISOLATION HUDS */}
           <section className="aura-hud-panel panel-gnn-status absolute top-4 left-[360px] right-[400px] h-48 p-4 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 pointer-events-auto flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <div>
@@ -563,7 +548,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* PANEL C: OCEANOGRAPHIC WATCHDOG ARRAY */}
           <section className="aura-hud-panel panel-marine-sat absolute top-4 right-5 w-[360px] p-4 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 pointer-events-auto flex flex-col gap-3">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-widest text-teal-400 mb-1">Oceanographic Watchdog Telemetry</h2>
@@ -595,7 +579,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* PANEL D: LOGISTICS INCIDENT TRANSCRIBER TEXTBOX */}
           <section className="aura-hud-panel panel-triage-audio absolute bottom-4 left-5 w-[420px] p-4 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 pointer-events-auto flex flex-col gap-3">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-1">Dialect-Mapped Logistics Transcriber</h2>
@@ -629,7 +612,6 @@ export default function App() {
             )}
           </section>
 
-          {/* PANEL E: MUTUAL AID ROUTER MATRIX */}
           <section className="aura-hud-panel panel-mutual-aid absolute bottom-4 right-5 w-[400px] p-4 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/5 pointer-events-auto flex flex-col gap-3">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1">Mutual Aid Real-Time Routing</h2>
@@ -656,7 +638,6 @@ export default function App() {
               )}
             </div>
           </section>
-
         </div>
       </div>
     </div>
