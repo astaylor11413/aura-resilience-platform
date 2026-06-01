@@ -287,7 +287,7 @@ def generate_dialect_broadcast():
     data = request.get_json() or {}
     text_to_speak = data.get("text", "Warning: Move inland.")
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
-    CARIBBEAN_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
+    CARIBBEAN_VOICE_ID = "dhwafD61uVd8h85wAZSE"
     
     if not ELEVENLABS_API_KEY: 
         return jsonify({"info": "Key missing. Client WebSpeech Fallback activated."}), 200
@@ -296,7 +296,15 @@ def generate_dialect_broadcast():
     headers = {"Accept": "audio/mpeg", "Content-Type": "application/json", "xi-api-key": ELEVENLABS_API_KEY}
     
     try:
-        res = requests.post(url, json={"text": text_to_speak, "model_id": "eleven_monolingual_v1"}, headers=headers, stream=True)
+        res = requests.post(url, json={
+            "text": text_to_speak, 
+            "model_id": "eleven_multilingual_v2", 
+            "voice_settings":{
+                "stability": 0.45,  # <--more natural local cadence and inflection
+                "similarity_boost": 0.85, # <-- High clarity focus
+                "style": 0.15,
+                "use_speaker_boost": True
+            }}, headers=headers, stream=True)
         if res.status_code == 200:
             with open("/tmp/alert.mp3", "wb") as f:
                 for c in res.iter_content(1024): f.write(c)

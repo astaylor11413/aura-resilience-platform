@@ -59,7 +59,7 @@ export default function App() {
   const triggerResilientOrchestrationStory = () => {
     setWindSpeed(78);
     setSlrMeters(2.0);
-    executeVoiceBroadcast("Warning: Main transmission feeds compromised by surge forces. Aura platform activating local autonomous microgrid isolation loops.");
+    executeVoiceBroadcast("Wahhnin: De main transmission lines bypass Kingston break complete down by de sea surge. Aura engine lockin' it down, switchin' on de local microgrid loop right now.");
   };
 
   const handleIncidentPipelineSubmit = (e) => {
