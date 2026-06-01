@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 html, body, #root {
   margin: 0;
   padding: 0;
@@ -39,46 +38,8 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
-/* Core Dashboard Workspace Layout */
-.dashboard-workspace {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  color: #f1f5f9;
-  font-family: 'Inter', system-ui, sans-serif;
-}
 
-/* Background Map Canvas Element Container */
-.map-underlay-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+/* Custom system fixes for map engine layers */
+.mapboxgl-canvas {
+  outline: none;
 }
-
-/* High-Tech Environmental Overlay HUD Grid Units */
-.aura-hud-panel {
-  position: absolute;
-  z-index: 10;
-  background: rgba(15, 23, 42, 0.75); /* Deep Slate Base */
-  backdrop-filter: blur(12px) saturate(140%); /* Frosted Glass Layering */
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.aura-hud-panel:hover {
-  border-color: rgba(56, 189, 248, 0.3); /* Subtle Cyber Blue Highlight on Hover */
-  box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.1);
-}
-
-/* Specific Absolute Positioning Anchors */
-.panel-controls     { top: 70px;  left: 20px;  width: 320px; }
-.panel-gnn-status   { top: 70px;  left: 360px; right: 400px; } /* Stretches dynamically */
-.panel-marine-sat   { top: 70px;  right: 20px; width: 360px; }
-.panel-triage-audio { bottom: 20px; left: 20px;  width: 400px; }
-.panel-mutual-aid   { bottom: 20px; right: 20px; width: 400px; }

@@ -17,7 +17,7 @@ export default function App() {
     <div className="relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
       
       {/* MAP UNDERLAY */}
-      <div className="absolute top-0 left-0 w-full h-full z-0">
+      <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-auto">
         <Map
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
@@ -76,7 +76,7 @@ export default function App() {
                     <span className="text-slate-500 group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2">
-                    Status: <span className={asset.status.includes('CRITICAL') ? 'text-rose-400' : 'text-slate-300'}>{asset.status}</span>
+                    Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-slate-300'}>{asset.status}</span>
                   </div>
                 </details>
               ))}
@@ -87,8 +87,8 @@ export default function App() {
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.marineAnomalies.map((m, i) => (
                 <div key={i} className="text-[10px] p-2 border-l-2 border-teal-500 bg-slate-900/50 rounded-r flex justify-between">
-                  <div className="font-bold text-slate-200">{m.properties.location_name}</div>
-                  <div className="text-teal-400 font-mono">+{m.properties.surface_temp_anomaly_celsius}°C</div>
+                  <div className="font-bold text-slate-200">{m.properties?.location_name || 'Unknown Hub'}</div>
+                  <div className="text-teal-400 font-mono">+{m.properties?.surface_temp_anomaly_celsius || 0}°C</div>
                 </div>
               ))}
             </div>
