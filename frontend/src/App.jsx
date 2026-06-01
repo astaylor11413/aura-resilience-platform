@@ -15,12 +15,12 @@ export default function App() {
   const [airGapped, setAirGapped] = useState(false);
 
   // Guarded Backend Repositories (Initialized to structural defaults)
-  const [gridAssets, setGridAssets] = useState([]); 
+  const [gridAssets, setGridAssets] = useState([]);
   const [gridState, setGridState] = useState('NOMINAL');
   const [derOutput, setDerOutput] = useState(0.0);
   const [marineAnomalies, setMarineAnomalies] = useState([]);
   const [triageReport, setTriageReport] = useState(null);
-  
+
   const [routingGeoJson, setRoutingGeoJson] = useState({ type: 'FeatureCollection', features: [] });
   const [inundationGeoJson, setInundationGeoJson] = useState({ type: 'FeatureCollection', features: [] });
 
@@ -178,7 +178,7 @@ export default function App() {
   const getFeatureCenter = (feat) => {
     if (!feat || !feat.geometry) return [-76.78, 17.95];
     const { type, coordinates } = feat.geometry;
-    
+
     if (type === 'Point' && Array.isArray(coordinates)) {
       return coordinates;
     }
@@ -199,7 +199,7 @@ export default function App() {
   const onMapHover = (event) => {
     const { features, lngLat } = event;
     const targetPolygonFeature = features && features.find(f => f.layer.id === 'marine-anomaly-polygon-layer');
-    
+
     if (targetPolygonFeature) {
       setHoveredFeature({
         lng: lngLat.lng,
@@ -216,7 +216,7 @@ export default function App() {
   // ==========================================
   const compiledSubstationGeoJson = (() => {
     if (!Array.isArray(gridAssets) || gridAssets.length === 0) return null;
-    
+
     try {
       return {
         type: "FeatureCollection",
@@ -262,7 +262,7 @@ export default function App() {
         return route;
       }
 
-      const originCoords = route.properties?.origin_coordinates; 
+      const originCoords = route.properties?.origin_coordinates;
       const destCoords = route.properties?.destination_coordinates;
 
       if (Array.isArray(originCoords) && Array.isArray(destCoords)) {
@@ -285,7 +285,7 @@ export default function App() {
     if (!Array.isArray(marineAnomalies) || marineAnomalies.length === 0) {
       return { type: 'FeatureCollection', features: [] };
     }
-    
+
     return {
       type: "FeatureCollection",
       features: marineAnomalies.map(anomaly => {
@@ -336,12 +336,11 @@ export default function App() {
             <Source type="geojson" data={verifiedRoutingGeoJson}>
               <Layer
                 id="mutual-aid-layer"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                type="fill"
                 paint={{
-                  'line-color': '#a855f7',
-                  'line-width': 4,
-                  'line-dasharray': [2, 2]
+                  'fill-color': '#a855f7',
+                  'fill-opacity': 0.3,
+                  'fill-outline-color': '#d8b4fe'
                 }}
               />
             </Source>
@@ -396,7 +395,7 @@ export default function App() {
                     ['get', 'status'],
                     'critical', '#e11d48',
                     'islanded', '#38bdf8',
-                    '#16a34a' 
+                    '#16a34a'
                   ],
                   'circle-stroke-width': 2,
                   'circle-stroke-color': '#ffffff'
