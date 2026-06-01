@@ -153,7 +153,7 @@ export default function App() {
     <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
       
       {/* MAP UNDERLAY CANVAS - DECLARATIVE IMPLEMENTATION */}
-      <div className="absolute top-0 left-0 w-full h-full z-0">
+      <div className="map-underlay-container absolute top-0 left-0 w-full h-full z-0">
         <Map
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
