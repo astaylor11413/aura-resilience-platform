@@ -140,19 +140,9 @@ export default function App() {
   };
 
   // Format substation point features dynamically from state
-  const substationGeoJson = {
-    type: 'FeatureCollection',
-    features: gridAssets.map(asset => ({
-      type: 'Feature',
-      geometry: { type: 'Point', coordinates: asset.coordinates },
-      properties: { id: asset.id, name: asset.name, status: asset.status || 'NOMINAL' }
-    }))
-  };
-
-  // Parse your backend array
-  const substationGeoJson = gridData?.assets ? {
+  const substationGeoJson = gridAssets?.assets ? {
     type: "FeatureCollection",
-    features: gridData.assets.map(asset => ({
+    features: gridAssets.assets.map(asset => ({
       type: "Feature",
       geometry: {
         type: "Point",
