@@ -306,11 +306,12 @@ def calculate_optimal_routing():
     routes_geojson = {"type": "FeatureCollection", "features": []}
     return jsonify(routes_geojson), 200
 
-# Root Welcome Route
+# Root Welcome Route for home page confirmation
 @app.route('/', methods=['GET'])
 def system_root_index():
     """
     Returns high-level runtime metadata parameters to confirm operational stability.
+    Prevents generic 404 response errors when opening base system domains.
     """
     return jsonify({
         "status": "ONLINE",
@@ -323,6 +324,7 @@ def system_root_index():
             "satellite_telemetry": "/api/v1/ocean/telemetry",
             "inundation_model": "/api/v1/hazard/inundation"
         }
+    }), 200
 
 if __name__ == '__main__':
     app.run(port=8000, debug=True)
