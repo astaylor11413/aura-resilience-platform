@@ -214,7 +214,23 @@ def simulate_inundation():
             })
     return jsonify(flooded_features), 200
 
-# 5. Integrated Ingestion Pipeline (Whisper -> Triage NLP -> GNN -> Vision -> Playbook SLM)
+
+# 5. Integrated Ingestion Pipeline
+TACTICAL_PLAYBOOK_MATRIX = {
+    "Severe Flooding": {
+        "playbook": "ACTIVATE PROTOCOL AMPHIBIOUS-SHIELD: Coastal telemetry bounds breached. Deploy automated sea-wall micro-gates and route emergency vehicles to high-elevation transit lanes.",
+        "system_profile": "Severe Shoreline Surge / Inundation Event"
+    },
+    "Power Grid Failure": {
+        "playbook": "ACTIVATE PROTOCOL OMNI-ISOLATION: Main transmission lines compromised. Islanding command sequences routed to local microgrid nodes; dispatching asset repair crews to isolated sectors.",
+        "system_profile": "Critical Grid Topology Degradation"
+    },
+    "Structural Damage": {
+        "playbook": "ACTIVATE PROTOCOL STRUCTURAL-INTEGRITY: Substation physical bounds compromised. Dispatch engineering field units immediately to secure the perimeter and stabilize neighboring energy distribution frameworks.",
+        "system_profile": "Physical Infrastructure Breach"
+    }
+}
+
 @app.route('/api/v1/voice/report', methods=['POST'])
 def transcribe_and_triage_report():
     transcript_text = request.form.get("text", "")
@@ -222,6 +238,7 @@ def transcribe_and_triage_report():
     wind_speed = float(request.form.get("wind_speed", 25.0))
     image_file = request.files.get("image")
 
+    # 1. OpenAI Whisper Audio Ingestion Stream
     if 'audio' in request.files and not transcript_text:
         try:
             transcript = openai_client.audio.transcriptions.create(
@@ -235,20 +252,20 @@ def transcribe_and_triage_report():
     if not transcript_text:
         transcript_text = "Alert: High water surge threatening local hospital framework infrastructure."
 
-    # Lazy-Loaded Triage Engine
+    # 2. Lazy-Loaded Zero-Shot Triage Engine (Optimized via bfloat16)
     triage_pipeline = get_pipeline("triage")
     labels = ["Severe Flooding", "Power Grid Failure", "Structural Damage"]
     nlp_res = triage_pipeline(transcript_text, candidate_labels=labels)
     primary_threat = nlp_res["labels"][0]
 
-    # Map parsed text contextual entities to explicit GNN index nodes
+    # 3. Map parsed text contextual entities to explicit GNN index nodes
     threat_index = None
     if "palisadoes" in transcript_text.lower() or "transmission" in transcript_text.lower():
         threat_index = 1
     elif "hospital" in transcript_text.lower():
         threat_index = 0
 
-    # Lazy-Loaded Vision Engine
+    # 4. Lazy-Loaded Vision Engine
     visual_assessment = "No image payload attached."
     if image_file:
         try:
@@ -259,28 +276,23 @@ def transcribe_and_triage_report():
         except Exception:
             visual_assessment = "Vision Hardware Warning: Structural breach detected."
 
-    # Lazy-Loaded Playbook Engine
-    prompt = (
-        f"<|im_start|>system\nYou are Aura, an elite automated emergency tactical coordinator. "
-        f"Provide a clear, 2-sentence tactical directive response for field rescue squads based on metrics below.<|im_end|>\n"
-        f"<|im_start|>user\nIncident Classification: {primary_threat}.\nVisual Scan: {visual_assessment}.\n"
-        f"Citizen Raw Dispatch: '{transcript_text}'<|im_end|>\n"
-        f"<|im_start|>assistant\n"
+    # 5. Lean Matrix Playbook Generation (Zero Memory/CPU Overhead)
+    # Safely matches the primary threat to an instant, detailed tactical playbook payload
+    playbook_data = TACTICAL_PLAYBOOK_MATRIX.get(
+        primary_threat, 
+        {
+            "playbook": f"TACTICAL ALERT: Deploy teams immediately to manage {primary_threat}. Secure infrastructure perimeter parameters.",
+            "system_profile": "General Threat Active Scenario"
+        }
     )
-    try:
-        playbook_pipeline = get_pipeline("playbook")
-        gen = playbook_pipeline(prompt, max_new_tokens=90, do_sample=True, temperature=0.2)
-        playbook = gen[0]['generated_text'].split("<|im_start|>assistant\n")[-1].strip()
-    except Exception:
-        playbook = f"TACTICAL ALERT: Deploy teams immediately to manage {primary_threat}. Secure infrastructure perimeter parameters."
 
     return jsonify({
         "status": "success",
         "transcription": transcript_text,
-        "triage_incident_profile": primary_threat,
+        "triage_incident_profile": playbook_data["system_profile"],
         "matched_node_threat_index": threat_index,
         "visual_verification": visual_assessment,
-        "actionable_tactical_playbook": playbook
+        "actionable_tactical_playbook": playbook_data["playbook"]
     }), 200
 
 # 6. Outbound Dialect Accent-Mapped TTS (ElevenLabs Integration)
