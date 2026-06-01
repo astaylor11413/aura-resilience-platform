@@ -93,29 +93,29 @@ export default function App() {
     });
   };
 
-  const executeVoiceBroadcast = (text) => {
-    if (airGapped) {
+const executeVoiceBroadcast = (text) => {
+  if (airGapped) {
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    return;
+  }
+  fetch(`${BACKEND_API_BASE}/api/v1/voice/broadcast`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text })
+  })
+  .then(res => {
+    const contentType = res.headers.get("content-type") || "";
+    // CATCH ALL MP3/MPEG VARIATIONS FROM THE BACKEND
+    if (contentType.includes("audio") || contentType.includes("octet-stream")) {
+      res.blob().then(b => new Audio(URL.createObjectURL(b)).play());
+    } else {
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-      return;
     }
-    fetch(`${BACKEND_API_BASE}/api/v1/voice/broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text })
-    })
-    .then(res => {
-      if (res.headers.get("content-type") === "audio/mpeg") {
-        res.blob().then(b => new Audio(URL.createObjectURL(b)).play());
-      } else {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-      }
-    })
-    .catch(() => {
-      // Local fallback in case network congestion drops ElevenLabs latency streams
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-    });
-  };
-
+  })
+  .catch(() => {
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  });
+};
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#0f172a', color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header style={{ padding: '14px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a' }}>
