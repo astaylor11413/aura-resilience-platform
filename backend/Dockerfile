@@ -31,4 +31,4 @@ COPY . /app/
 EXPOSE 8000
 
 # Fire up Gunicorn as the WSGI worker server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app", "--timeout", "180"]
