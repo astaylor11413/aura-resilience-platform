@@ -134,7 +134,7 @@ export default function App() {
       {/* Main Content Body */}
       <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden">
         
-        {/* 💻 Controls Panel (Full width on Mobile, fixed left on Desktop) */}
+        {/* Controls Panel (Full width on Mobile, fixed left on Desktop) */}
         <div className={`w-full md:w-[440px] p-5 lg:p-6 bg-slate-900 flex flex-col gap-5 overflow-y-auto border-r border-slate-800/50 shrink-0 z-20 ${
           activeTab === 'controls' ? 'flex' : 'hidden md:flex'
         }`}>
@@ -262,8 +262,8 @@ export default function App() {
 
         </div>
 
-        {/* 🗺️ Interactive Map Panel (Takes remaining space, full height on mobile if selected) */}
-        <div className={`flex-1 relative h-full min-h-[350px] md:min-h-0 ${
+        {/* Interactive Map Panel */}
+        <div className={`flex-1 relative min-h-[50vh] md:h-[calc(100vh-73px)] ${
           activeTab === 'map' ? 'block' : 'hidden md:block'
         }`}>
           <Map 
@@ -293,7 +293,7 @@ export default function App() {
           </Map>
         </div>
 
-        {/* 📱 Mobile Sticky Sub-Navigation Bar (Only renders on small devices) */}
+        {/* Mobile Sticky Sub-Navigation Bar (Only renders on small devices) */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900 border-t border-slate-800 flex z-50">
           <button 
             onClick={() => setActiveTab('controls')}
