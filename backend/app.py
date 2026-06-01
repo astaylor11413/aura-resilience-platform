@@ -3,6 +3,7 @@ import io
 import math
 import numpy as np
 import requests
+import torch
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from pydantic import BaseModel, Field, ValidationError
@@ -21,17 +22,64 @@ CORS(app)
 openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "mock-key-for-dev"))
 
 # ==========================================
-# LOCAL HUGGING FACE MODELS
+# LAZY-LOADED HUGGING FACE MODEL CACHE
 # ==========================================
-print("Loading Aura Multi-Modal AI Engines...")
-try:
-    triage_pipeline = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli", device=-1)
-    vision_pipeline = pipeline("image-classification", model="google/vit-base-patch16-224", device=-1)
-    playbook_pipeline = pipeline("text-generation", model="sshleifer/distilbart-cnn-12-6", device=-1)
+_pipelines = {
+    "triage": None,
+    "vision": None,
+    "playbook": None
+}
+
+def get_pipeline(pipeline_type):
+    """
+    Lazy-loads pipelines with half-precision (float16) and optimized CPU memory allocation.
+    Only consumes RAM when a user actively hits the endpoint.
+    """
+    if _pipelines[pipeline_type] is not None:
+        return _pipelines[pipeline_type]
+
+    print(f"Lazy Loading Aura {pipeline_type.upper()} Engine into RAM...")
     
-    print("✓ Local NLP, Vision, and Playbook Engines Online.")
-except Exception as e:
-    print("Local Transformers Initialization Warning:", e)
+    # Pipeline model configuration options to compress RAM overhead
+    model_kwargs = {
+        "torch_dtype": torch.float16,   
+        "low_cpu_mem_usage": True       
+    }
+
+    try:
+        if pipeline_type == "triage":
+            _pipelines["triage"] = pipeline(
+                "zero-shot-classification", 
+                model="typeform/distilbert-base-uncased-mnli", 
+                device=-1,
+                model_kwargs=model_kwargs
+            )
+        elif pipeline_type == "vision":
+            _pipelines["vision"] = pipeline(
+                "image-classification", 
+                model="google/vit-base-patch16-224", 
+                device=-1,
+                model_kwargs=model_kwargs
+            )
+        elif pipeline_type == "playbook":
+            _pipelines["playbook"] = pipeline(
+                "text-generation", 
+                model="sshleifer/distilbart-cnn-12-6", 
+                device=-1,
+                model_kwargs=model_kwargs
+            )
+    except Exception as e:
+        print(f"Optimization Initialization Warning for {pipeline_type}:", e)
+        # Fallback to standard initialization if float16 processing not supported
+        if pipeline_type == "triage":
+            _pipelines["triage"] = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli", device=-1)
+        elif pipeline_type == "vision":
+            _pipelines["vision"] = pipeline("image-classification", model="google/vit-base-patch16-224", device=-1)
+        elif pipeline_type == "playbook":
+            _pipelines["playbook"] = pipeline("text-generation", model="sshleifer/distilbart-cnn-12-6", device=-1)
+
+    return _pipelines[pipeline_type]
+
 
 # Reflects connections for our 3 database nodes
 grid_adjacency = np.array([
@@ -167,7 +215,6 @@ def simulate_inundation():
 # 5. Integrated Ingestion Pipeline (Whisper -> Triage NLP -> GNN -> Vision -> Playbook SLM)
 @app.route('/api/v1/voice/report', methods=['POST'])
 def transcribe_and_triage_report():
-    # 1. Text extraction fallback checking
     transcript_text = request.form.get("text", "")
     air_gapped = request.form.get("air_gapped", "false").lower() == "true"
     wind_speed = float(request.form.get("wind_speed", 25.0))
@@ -186,7 +233,8 @@ def transcribe_and_triage_report():
     if not transcript_text:
         transcript_text = "Alert: High water surge threatening local hospital framework infrastructure."
 
-    # 2. Local NLP Triage Classification
+    # Lazy-Loaded Triage Engine
+    triage_pipeline = get_pipeline("triage")
     labels = ["Severe Flooding", "Power Grid Failure", "Structural Damage"]
     nlp_res = triage_pipeline(transcript_text, candidate_labels=labels)
     primary_threat = nlp_res["labels"][0]
@@ -198,17 +246,18 @@ def transcribe_and_triage_report():
     elif "hospital" in transcript_text.lower():
         threat_index = 0
 
-    # 3. Dynamic Computer Vision Pipeline Pass
+    # Lazy-Loaded Vision Engine
     visual_assessment = "No image payload attached."
     if image_file:
         try:
+            vision_pipeline = get_pipeline("vision")
             img = Image.open(io.BytesIO(image_file.read())).convert("RGB")
             vi_res = vision_pipeline(img)
             visual_assessment = f"Verified Drone Feed: {vi_res[0]['label']} ({round(vi_res[0]['score']*100, 1)}%)"
         except Exception:
             visual_assessment = "Vision Hardware Warning: Structural breach detected."
 
-    # 4. Generate AI Tactical Action Playbook Summary Plan
+    # Lazy-Loaded Playbook Engine
     prompt = (
         f"<|im_start|>system\nYou are Aura, an elite automated emergency tactical coordinator. "
         f"Provide a clear, 2-sentence tactical directive response for field rescue squads based on metrics below.<|im_end|>\n"
@@ -217,6 +266,7 @@ def transcribe_and_triage_report():
         f"<|im_start|>assistant\n"
     )
     try:
+        playbook_pipeline = get_pipeline("playbook")
         gen = playbook_pipeline(prompt, max_new_tokens=90, do_sample=True, temperature=0.2)
         playbook = gen[0]['generated_text'].split("<|im_start|>assistant\n")[-1].strip()
     except Exception:

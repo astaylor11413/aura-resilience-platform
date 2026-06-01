@@ -29,4 +29,4 @@ COPY . /app/
 EXPOSE 10000
 
 # Fire up Gunicorn as a single WSGI worker thread to fit safely inside the 2GB memory tier
-CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app", "--workers", "1", "--timeout", "180", "--preload"]
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app", "--workers", "1", "--timeout", "180"]
