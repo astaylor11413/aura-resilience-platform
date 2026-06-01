@@ -41,7 +41,6 @@ def get_pipeline(pipeline_type):
 
     print(f"Lazy Loading Aura {pipeline_type.upper()} Engine into RAM...")
     
-    # Use bfloat16 which has excellent native CPU kernel support for LayerNorm ops
     model_kwargs = {
         "torch_dtype": torch.bfloat16,   # Memory savings optimized for CPU execution
         "low_cpu_mem_usage": True        # Prevents memory doubling spikes during weight loading
@@ -71,7 +70,6 @@ def get_pipeline(pipeline_type):
             )
     except Exception as e:
         print(f"Primary precision init warning for {pipeline_type}, falling back to float32: {e}")
-        # Clean fallback to float32 with low_cpu memory management active
         fallback_kwargs = {"low_cpu_mem_usage": True}
         if pipeline_type == "triage":
             _pipelines["triage"] = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli", device=-1, model_kwargs=fallback_kwargs)
@@ -83,7 +81,7 @@ def get_pipeline(pipeline_type):
     return _pipelines[pipeline_type]
 
 
-# Reflects connections for our 3 database nodes
+# Reflects structural connections for our database nodes
 grid_adjacency = np.array([
     [1, 1, 0],  # Hospital connected to Transmission
     [1, 1, 1],  # Transmission connected to both sides
@@ -97,10 +95,7 @@ def run_physics_informed_gnn(wind_speed, active_threat_index=None):
     """
     node_features = []
     for asset in mock_grid_substations:
-        # Heavily escalate transmission risks during storm thresholds
         vuln = 0.85 if wind_speed > 70 and asset["type"] == "Main-Transmission" else 0.2
-        
-        # Escalate risk factors if a citizen report maps explicitly to this node's sector
         if asset["graph_index"] == active_threat_index:
             vuln += 0.4
         node_features.append([1.0, float(asset["type"] == "Critical-Hospital-Node"), vuln])
@@ -113,7 +108,6 @@ def run_physics_informed_gnn(wind_speed, active_threat_index=None):
         idx = asset["graph_index"]
         neighbor_stress = graph_convolution[idx][2]
         
-        # Calculate localized voltage stability based on physics degradation
         stability = 1.0 - (0.004 * wind_speed) - (0.12 * neighbor_stress)
         stability = max(0.0, min(1.0, stability))
         
@@ -143,11 +137,14 @@ class FoodSurplusPayload(BaseModel):
 def health_check():
     return jsonify({"status": "healthy", "engine": "Aura-Orchestrator-v3"}), 200
 
-# 2. Microgrid Orchestration & Kinetic Power Calculation Engine
+# 2. Microgrid Orchestration Engine
 @app.route('/api/v1/resilience/simulate-grid', methods=['GET'])
 def simulate_grid():
     wind_speed = request.args.get('wind_speed_mph', default=25.0, type=float)
-    active_threat_idx = request.args.get('threat_index', default=None, type=type(None))
+    
+    # Secure mapping initialization for clean argument matching
+    raw_threat = request.args.get('threat_index', default=None)
+    active_threat_idx = int(raw_threat) if (raw_threat is not None and raw_threat != "null" and raw_threat != "") else None
     
     available_wattage_kw = 0.0
     if 12.0 <= wind_speed <= 90.0:
@@ -168,7 +165,7 @@ def simulate_grid():
         
         if metrics["calculated_status"] == "CRITICAL // SEVERED // DOWN":
             allocated_load = "SHUT_DOWN"
-        elif "ISLANDED" in metrics["calculated_status"]:
+        elif "ISLANDED" in metrics["calculated_status"] or wind_speed >= 55.0:
             allocated_load = f"SUSTAINED via {available_wattage_kw}kW Resilient Wind & Storage"
             
         grid_response["assets"].append({
@@ -182,8 +179,8 @@ def simulate_grid():
         
     return jsonify(grid_response), 200
 
-# 3. Ocean Satellite Telemetry & AI Watchdog
-@app.route('/api/v1/ocean/telemetry', methods=['GET'])
+# 3. Layer 1 Alignment: Core Ocean Satellite Telemetry & AI Watchdog
+@app.route('/api/v1/marine/thermal-anomalies', methods=['GET'])
 def get_ocean_telemetry():
     features = []
     for anomaly in mock_ocean_anomalies:
@@ -214,8 +211,7 @@ def simulate_inundation():
             })
     return jsonify(flooded_features), 200
 
-
-# 5. Integrated Ingestion Pipeline
+# 5. Integrated Ingestion Pipeline Configuration Matrix
 TACTICAL_PLAYBOOK_MATRIX = {
     "Severe Flooding": {
         "playbook": "ACTIVATE PROTOCOL AMPHIBIOUS-SHIELD: Coastal telemetry bounds breached. Deploy automated sea-wall micro-gates and route emergency vehicles to high-elevation transit lanes.",
@@ -235,37 +231,36 @@ TACTICAL_PLAYBOOK_MATRIX = {
 def transcribe_and_triage_report():
     transcript_text = request.form.get("text", "")
     air_gapped = request.form.get("air_gapped", "false").lower() == "true"
-    wind_speed = float(request.form.get("wind_speed", 25.0))
     image_file = request.files.get("image")
 
-    # 1. OpenAI Whisper Audio Ingestion Stream
-    if 'audio' in request.files and not transcript_text:
+    # 1. OpenAI Whisper Audio Stream with Dialect Injection
+    if 'audio' in request.files and not transcript_text and not air_gapped:
         try:
             transcript = openai_client.audio.transcriptions.create(
                 model="whisper-1", file=request.files['audio'],
-                prompt="Context: Emergency disaster report, storm surge, Jamaican Caribbean dialect Patois."
+                prompt="Context: Emergency disaster triage logistics. Handling regional Caribbean dialects, patois grammar phrases, and structural breakages."
             )
             transcript_text = transcript.text
         except Exception:
             transcript_text = "The coastal lines dem break down completely, Palisadoes transmission line is underwater!"
 
     if not transcript_text:
-        transcript_text = "Alert: High water surge threatening local hospital framework infrastructure."
+        transcript_text = "Palisadoes transmission line is damaged by high water surge, grid stability drop!"
 
-    # 2. Lazy-Loaded Zero-Shot Triage Engine (Optimized via bfloat16)
+    # 2. Localized Machine Triage Pipeline Execution (bfloat16 Protected)
     triage_pipeline = get_pipeline("triage")
     labels = ["Severe Flooding", "Power Grid Failure", "Structural Damage"]
     nlp_res = triage_pipeline(transcript_text, candidate_labels=labels)
     primary_threat = nlp_res["labels"][0]
 
-    # 3. Map parsed text contextual entities to explicit GNN index nodes
+    # 3. Dynamic Node-to-Graph Structural Assignment Logic
     threat_index = None
     if "palisadoes" in transcript_text.lower() or "transmission" in transcript_text.lower():
         threat_index = 1
     elif "hospital" in transcript_text.lower():
         threat_index = 0
 
-    # 4. Lazy-Loaded Vision Engine
+    # 4. Image Pipeline Core Assessment
     visual_assessment = "No image payload attached."
     if image_file:
         try:
@@ -276,8 +271,6 @@ def transcribe_and_triage_report():
         except Exception:
             visual_assessment = "Vision Hardware Warning: Structural breach detected."
 
-    # 5. Lean Matrix Playbook Generation (Zero Memory/CPU Overhead)
-    # Safely matches the primary threat to an instant, detailed tactical playbook payload
     playbook_data = TACTICAL_PLAYBOOK_MATRIX.get(
         primary_threat, 
         {
@@ -295,11 +288,12 @@ def transcribe_and_triage_report():
         "actionable_tactical_playbook": playbook_data["playbook"]
     }), 200
 
-# 6. Outbound Dialect Accent-Mapped TTS (ElevenLabs Integration)
+# 6. Outbound Accent-Aware TTS Generation Route
 @app.route('/api/v1/voice/broadcast', methods=['POST'])
 def generate_dialect_broadcast():
     data = request.get_json() or {}
     text_to_speak = data.get("text", "Warning: Move inland.")
+    
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
     CARIBBEAN_VOICE_ID = "eRcsJdPMOM0mtGC03ul7"
     
@@ -313,9 +307,9 @@ def generate_dialect_broadcast():
         res = requests.post(url, json={
             "text": text_to_speak, 
             "model_id": "eleven_multilingual_v2", 
-            "voice_settings":{
-                "stability": 0.45,  # <--more natural local cadence and inflection
-                "similarity_boost": 0.85, # <-- High clarity focus
+            "voice_settings": {
+                "stability": 0.45,
+                "similarity_boost": 0.85,
                 "style": 0.15,
                 "use_speaker_boost": True
             }}, headers=headers, stream=True)
@@ -324,33 +318,57 @@ def generate_dialect_broadcast():
                 for c in res.iter_content(1024): f.write(c)
             return send_file("/tmp/alert.mp3", mimetype="audio/mpeg")
         else:
-            return jsonify({"info": "ElevenLabs returned non-200, browser fallback triggered"}), 200
+            return jsonify({"info": "ElevenLabs API Error. Falling back to browser audio."}), 200
     except Exception as e: 
-        return jsonify({"error": str(e), "info": "Fallback route executed"}), 500
+        return jsonify({"error": str(e), "info": "Fallback triggered"}), 500
 
-# 7. Spatial Routing Network Optimizer
-@app.route('/api/v1/mutual-aid/routes', methods=['GET'])
+# 7. Layer 3 Alignment: Nearest-Neighbor Euclidean Spatial Route Compiler
+@app.route('/api/v1/spatial/mutual-aid-paths', methods=['GET'])
 def calculate_optimal_routing():
     routes_geojson = {"type": "FeatureCollection", "features": []}
+    
+    # Iterates through database lists to map human survival lines
+    for kitchen in mock_supply_db:
+        k_coords = kitchen["coordinates"]
+        best_shelter = None
+        min_dist = float('inf')
+        
+        for shelter in mock_demand_db:
+            s_coords = shelter["coordinates"]
+            # Apply Euclidean distance matrix geometry across coordinate pairs
+            dst = distance.euclidean(k_coords, s_coords)
+            if dst < min_dist:
+                min_dist = dst
+                best_shelter = shelter
+                
+        if best_shelter:
+            routes_geojson["features"].append({
+                "type": "Feature",
+                "properties": {
+                    "origin_kitchen": kitchen["restaurant_name"],
+                    "destination_shelter": best_shelter["shelter_name"],
+                    "permit_verification": kitchen["verification_permit"]
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [k_coords, best_shelter["coordinates"]]
+                }
+            })
+            
     return jsonify(routes_geojson), 200
 
-# Root Welcome Route for home page confirmation
 @app.route('/', methods=['GET'])
 def system_root_index():
-    """
-    Returns high-level runtime metadata parameters to confirm operational stability.
-    Prevents generic 404 response errors when opening base system domains.
-    """
     return jsonify({
         "status": "ONLINE",
         "platform": "Aura Resilience Engine Orchestrator",
-        "architecture_tier": "Standard-2GB-Optimized",
         "engine_version": "v3.1.0-production",
         "active_endpoints": {
             "health": "/api/v1/health",
             "grid_simulation": "/api/v1/resilience/simulate-grid",
-            "satellite_telemetry": "/api/v1/ocean/telemetry",
-            "inundation_model": "/api/v1/hazard/inundation"
+            "satellite_telemetry": "/api/v1/marine/thermal-anomalies",
+            "inundation_model": "/api/v1/hazard/inundation",
+            "spatial_routing": "/api/v1/spatial/mutual-aid-paths"
         }
     }), 200
 

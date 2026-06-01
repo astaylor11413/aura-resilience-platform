@@ -1,321 +1,434 @@
-import React, { useState, useEffect, useRef} from 'react';
-import Map, { Source, Layer, Marker } from 'react-map-gl';
-import { 
-  Wind, Activity, Volume2, ShieldAlert, Zap, Radio, 
-  Map as MapIcon, Sliders, AlertTriangle, FileText, CheckCircle2 
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiYXN0YXlsb3IxMTQxMyIsImEiOiJjbXB1cmpydmMxd3BuMnNwejZpaWo5ejExIn0.kxy1wEs_hpg5ZYB-2Z3daw';
-const BACKEND_API_BASE = "https://aura-resilience-platform-qa.onrender.com/";
-
-const STYLES = {
-  wrapper: { fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#f8fafc', color: '#334155', minHeight: '100vh', display: 'flex', flexDirection: 'column' },
-  header: { padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' },
-  logoBox: { padding: '8px', backgroundColor: '#eef2f6', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  mainBody: { flex: 1, display: 'flex', flexDirection: 'row', relative: 'true', overflow: 'hidden' },
-  
-  // Controls Dashboard Layout Panel
-  panel: { width: '420px', padding: '24px', backgroundColor: '#ffffff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', boxSizing: 'border-box', flexShrink: 0 },
-  
-  // Interactive UI Cards
-  btnDanger: { width: '100%', backgroundColor: '#e11d48', border: 'none', padding: '14px', borderRadius: '12px', color: '#ffffff', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '14px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
-  btnSubmit: { width: '100%', backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: '700', padding: '12px', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
-  cardMetric: { padding: '16px', borderRadius: '16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' },
-  cardSection: { padding: '16px', borderRadius: '16px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' },
-  cardDirective: { padding: '16px', borderRadius: '16px', backgroundColor: '#f0fdf4', border: '1px solid #dcfce7', animation: 'fadeIn 0.3s ease' },
-  
-  // Inputs & Badges
-  textarea: { width: '100%', height: '80px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', color: '#1e293b', fontSize: '13px', padding: '12px', boxSizing: 'border-box', outline: 'none', transition: 'all 0.2s', resize: 'none' },
-  fileRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: '#ffffff', padding: '8px 12px', borderRadius: '12px', border: '1px solid #e2e8f0' },
-  badgeStatus: (type) => ({
-    fontSize: '11px', padding: '4px 10px', borderRadius: '9999px', fontWeight: '700', textTransform: 'uppercase', border: '1px solid',
-    backgroundColor: type === 'DOWN' ? '#fff1f2' : type === 'ISLANDED' ? '#f0f9ff' : '#f0fdf4',
-    color: type === 'DOWN' ? '#e11d48' : type === 'ISLANDED' ? '#0284c7' : '#16a34a',
-    borderColor: type === 'DOWN' ? '#fecdd3' : type === 'ISLANDED' ? '#bae6fd' : '#bbf7d0'
-  })
-};
+// Retrieve MAPBOX token
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
 export default function App() {
-  const mapRef = useRef(null);
-  const [viewState, setViewState] = useState({ latitude: 17.96, longitude: -76.79, zoom: 9.2 });
+  // Map core references
+  const mapContainer = useRef(null);
+  const map = useRef(null);
+
+  // Simulation State Matrix
   const [windSpeed, setWindSpeed] = useState(25);
   const [slrMeters, setSlrMeters] = useState(0.0);
-  const [gridData, setGridData] = useState(null);
-  const [floodGeoJson, setFloodGeoJson] = useState(null);
-  const [activeOutputKw, setActiveOutputKw] = useState(0);
-
-  // Aura State Pipeline Matrices
-  const [airGapped, setAirGapped] = useState(false);
-  const [incidentText, setIncidentText] = useState("");
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [playbookResult, setPlaybookResult] = useState(null);
-  const [loadingPipeline, setLoadingPipeline] = useState(false);
   const [activeThreatIndex, setActiveThreatIndex] = useState(null);
-  
-  const [activeTab, setActiveTab] = useState('controls');
+  const [airGapped, setAirGapped] = useState(false);
 
+  // Dynamic Backend Response Payload Repositories
+  const [gridAssets, setGridAssets] = useState([]);
+  const [gridState, setGridState] = useState('NOMINAL');
+  const [derOutput, setDerOutput] = useState(0.0);
+  const [marineAnomalies, setMarineAnomalies] = useState([]);
+  const [triageReport, setTriageReport] = useState(null);
+  const [routingGeoJson, setRoutingGeoJson] = useState(null);
+  
+  // UI Operational States
+  const [isProcessingReport, setIsProcessingReport] = useState(false);
+  const [manualReportText, setManualReportText] = useState('');
+
+  // 1. Initialize Mapbox Canvas Base Layer
   useEffect(() => {
-    let url = `${BACKEND_API_BASE}/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}`;
-    if (activeThreatIndex !== null) url += `&threat_index=${activeThreatIndex}`;
-    
-    fetch(url)
+    if (map.current) return; // Only instantiate map framework once
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11', // Industrial dark environmental baseline style
+      center: [-76.78, 17.95], // Centered around Jamaica/Kingston region
+      zoom: 11,
+      pitch: 35
+    });
+
+    map.current.on('load', () => {
+      // Add empty sources for dynamic data layers
+      map.current.addSource('inundation-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      map.current.addLayer({
+        id: 'inundation-layer',
+        type: 'fill',
+        source: 'inundation-source',
+        paint: {
+          'fill-color': '#0ea5e9',
+          'fill-opacity': 0.45,
+          'fill-outline-color': '#38bdf8'
+        }
+      });
+
+      map.current.addSource('mutual-aid-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      map.current.addLayer({
+        id: 'mutual-aid-layer',
+        type: 'line',
+        source: 'mutual-aid-source',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#a855f7',
+          'line-width': 4,
+          'line-dasharray': [2, 2]
+        }
+      });
+    });
+  }, []);
+
+  // 2. Telemetry Core Synchronizer: Grid Simulation & Physics GNN Data Pipeline
+  useEffect(() => {
+    const threatQuery = activeThreatIndex !== null ? `&threat_index=${activeThreatIndex}` : '';
+    fetch(`http://localhost:8000/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}${threatQuery}`)
       .then(res => res.json())
       .then(data => {
-        setGridData(data);
-        setActiveOutputKw(data.calculated_der_output_kw);
+        setGridAssets(data.assets || []);
+        setGridState(data.grid_state);
+        setDerOutput(data.calculated_der_output_kw);
       })
-      .catch(err => console.error("Grid Link Error:", err));
+      .catch(err => console.error("Grid Sync Fault:", err));
   }, [windSpeed, activeThreatIndex]);
 
+  // 3. Telemetry Core Synchronizer: NOAA Inundation Multi-Polygon Matrix Mapping
   useEffect(() => {
-    fetch(`${BACKEND_API_BASE}/api/v1/hazard/inundation?slr_meters=${slrMeters}`)
+    fetch(`http://localhost:8000/api/v1/hazard/inundation?slr_meters=${slrMeters}`)
       .then(res => res.json())
-      .then(data => setFloodGeoJson(data))
-      .catch(err => console.error("Inundation Link Error:", err));
+      .then(geoJson => {
+        if (map.current && map.current.getSource('inundation-source')) {
+          map.current.getSource('inundation-source').setData(geoJson);
+        }
+      })
+      .catch(err => console.error("Inundation Vector Fault:", err));
   }, [slrMeters]);
 
+  // 4. Ingestion Sync: Fetch Static Marine Hotspots & Spatial Logistics Routes
   useEffect(() => {
-    if (mapRef.current) {
-      setTimeout(() => {
-        mapRef.current.getMap().resize();
-      }, 100); // Small 100ms delay gives the browser time to paint the layout first
-    }
-  }, [gridData, activeTab]);
+    fetch('http://localhost:8000/api/v1/marine/thermal-anomalies')
+      .then(res => res.json())
+      .then(data => setMarineAnomalies(data.features || []))
+      .catch(err => console.error("Marine Thermal Vector Fault:", err));
 
-  const triggerResilientOrchestrationStory = () => {
-    setWindSpeed(78);
-    setSlrMeters(2.0);
-    executeVoiceBroadcast("Warning: Main transmission lines near Kingston are compromised due to storm surge. Automating microgrid isolation procedures.");
-  };
+    fetch('http://localhost:8000/api/v1/spatial/mutual-aid-paths')
+      .then(res => res.json())
+      .then(geoJson => {
+        setRoutingGeoJson(geoJson);
+        if (map.current && map.current.getSource('mutual-aid-source')) {
+          map.current.getSource('mutual-aid-source').setData(geoJson);
+        }
+      })
+      .catch(err => console.error("Logistics Route Matrix Fault:", err));
+  }, []);
 
-  const handleIncidentPipelineSubmit = (e) => {
+  // 5. Actionable Handler: Parse Dialect Audio/Text Reports
+  const handleTriageSubmission = async (e) => {
     e.preventDefault();
-    setLoadingPipeline(true);
+    if (!manualReportText.trim()) return;
     
+    setIsProcessingReport(true);
     const formData = new FormData();
-    formData.append("text", incidentText);
+    formData.append("text", manualReportText);
     formData.append("air_gapped", airGapped.toString());
     formData.append("wind_speed", windSpeed.toString());
-    if (selectedImage) formData.append("image", selectedImage);
 
-    fetch(`${BACKEND_API_BASE}/api/v1/voice/report`, {
-      method: 'POST',
-      body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-      setPlaybookResult(data);
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/voice/report', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      setTriageReport(data);
+
+      // Auto-cascade threat indexes directly into our topology engine state
       if (data.matched_node_threat_index !== null) {
         setActiveThreatIndex(data.matched_node_threat_index);
       }
-      setLoadingPipeline(false);
-      executeVoiceBroadcast(`Triage complete. Status identified: ${data.triage_incident_profile}`);
-    })
-    .catch((err) => {
-      console.error("Pipeline Failure:", err);
-      setLoadingPipeline(false);
-    });
+
+      // Execute Accent-Aware Text-To-Speech Broadcast Loop
+      executeVoiceBroadcast(data.actionable_tactical_playbook);
+    } catch (err) {
+      console.error("Multi-modal Triage pipeline error:", err);
+    } finally {
+      setIsProcessingReport(false);
+    }
   };
 
-  const executeVoiceBroadcast = (text) => {
+  // 6. Audio Broadcast Controller Engine
+  const executeVoiceBroadcast = async (textToSpeak) => {
     if (airGapped) {
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+      // Pure air-gapped operation fallback: Route directly via client browser rendering
+      console.warn("Air-Gapped Flag True. Executing localized client WebSpeech fallback engine.");
+      const hostUtterance = new SpeechSynthesisUtterance(textToSpeak);
+      hostUtterance.rate = 0.95; 
+      window.speechSynthesis.speak(hostUtterance);
       return;
     }
-    fetch(`${BACKEND_API_BASE}/api/v1/voice/broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text })
-    })
-    .then(res => {
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("audio") || contentType.includes("octet-stream")) {
-        res.blob().then(b => new Audio(URL.createObjectURL(b)).play());
+
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/voice/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textToSpeak })
+      });
+      
+      const blob = await res.blob();
+      if (blob.type.includes("audio")) {
+        const audioUrl = URL.createObjectURL(blob);
+        const alertAudio = new Audio(audioUrl);
+        await alertAudio.play();
       } else {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+        // Fall back gracefully if backend framework fails outbound API verification checks
+        const fallbackUtterance = new SpeechSynthesisUtterance(textToSpeak);
+        window.speechSynthesis.speak(fallbackUtterance);
       }
-    })
-    .catch(() => window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)));
+    } catch (err) {
+      console.error("Audio pipeline routing issue, executing client synthesis:", err);
+      const errUtterance = new SpeechSynthesisUtterance(textToSpeak);
+      window.speechSynthesis.speak(errUtterance);
+    }
+  };
+
+  // 7. Interactive UI Helper Map Flyto Trigger
+  const flyToSpatialCoordinate = (coords) => {
+    if (!map.current) return;
+    map.current.flyTo({ center: coords, zoom: 13, speed: 1.2 });
   };
 
   return (
-    <div style={STYLES.wrapper}>
-      {/* Top Navigation Bar */}
-      <header style={STYLES.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={STYLES.logoBox}>
-            <Zap style={{ color: '#4f46e5' }} size={20} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: '16px', margin: 0, fontWeight: 700, color: '#0f172a' }}>Aura Resilience</h1>
-            <p style={{ fontSize: '12px', margin: '2px 0 0 0', color: '#64748b', fontWeight: 500 }}>Community Disaster Response Dashboard</p>
-          </div>
-        </div>
+    <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
+      
+      {/* BACKGROUND ELEMENT: MAPBOX IMMERSION CANVAS ENGINE */}
+      <div ref={mapContainer} className="map-underlay-container absolute top-0 left-0 w-full h-full z-10" />
 
-        <button 
-          onClick={() => setAirGapped(!airGapped)}
-          style={{
-            backgroundColor: airGapped ? '#fef3c7' : '#f1f5f9',
-            color: airGapped ? '#b45309' : '#475569',
-            border: `1px solid ${airGapped ? '#fde68a' : '#cbd5e1'}`,
-            padding: '8px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
-          }}
-        >
-          <Radio size={14} style={{ color: airGapped ? '#d97706' : '#64748b' }} />
-          <span>{airGapped ? "Air-Gapped Local" : "Cloud Synchronized"}</span>
-        </button>
+      {/* FIXED PLATFORM HEADER NAVIGATION BAR OVERLAY */}
+      <header className="absolute top-0 left-0 right-0 h-14 bg-slate-900/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-6 z-20">
+        <div className="flex items-center gap-3">
+          <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse" />
+          <h1 className="text-md font-bold tracking-wider text-white uppercase">AURA // Climate Resilience Control Center</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1 bg-slate-800/60 border border-white/5 rounded-md text-xs">
+            <span className="text-slate-400">STATE MATRIX:</span>
+            <span className={`font-mono font-bold ${gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-amber-400 animate-pulse'}`}>
+              {gridState}
+            </span>
+          </div>
+          <div className="text-xs font-mono text-slate-400">v3.1.0-PROD</div>
+        </div>
       </header>
 
-      {/* Main Container Workspace */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: window.innerWidth > 768 ? 'row' : 'column', overflow: 'hidden', position: 'relative' }}>
+      {/* PANEL HUD COMPONENT A: TELEMETRY CONTROL MATRIX CARD */}
+      <section className="aura-hud-panel panel-controls absolute top-20 left-5 w-80 p-4 rounded-xl z-20 flex flex-col gap-4">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-1">Environmental Vectors</h2>
+          <p className="text-[11px] text-slate-400">Configure situational stress variables</p>
+        </div>
         
-        {/* Left Side Menu Controls Dashboard (Always visible on desktop screens) */}
-        <div style={{ ...STYLES.panel, display: activeTab === 'controls' || window.innerWidth > 768 ? 'flex' : 'none' }}>
-          
-          <button onClick={triggerResilientOrchestrationStory} style={STYLES.btnDanger}>
-            <ShieldAlert size={18} /> <span>Simulate Hurricane Impact</span>
-          </button>
+        <hr className="border-white/5" />
 
-          <div style={STYLES.cardMetric}>
-            <span style={{ fontSize: '10px', fontWeight: '700', color: '#16a34a', display: 'block', marginBottom: '4px', letterSpacing: '0.05em' }}>BACKUP GENERATION OUTPUT</span>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: '#16a34a' }}>
-              {activeOutputKw.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '500', color: '#475569' }}>kW Active</span>
-            </div>
+        {/* Dynamic Wind Slider Configuration */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between font-mono text-xs">
+            <span className="text-slate-400">Sustained Wind Field:</span>
+            <span className="text-cyan-400 font-bold">{windSpeed} MPH</span>
           </div>
+          <input 
+            type="range" min="10" max="100" value={windSpeed} 
+            onChange={(e) => setWindSpeed(parseFloat(e.target.value))}
+            className="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+          />
+        </div>
 
-          {/* Sliders Configuration Block */}
-          <div style={STYLES.cardSection}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                  <Wind size={14} style={{ color: '#94a3b8' }} /> Sustained Wind Speed
-                </span>
-                <span style={{ fontWeight: '700', color: '#0f172a', backgroundColor: '#ffffff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>{windSpeed} MPH</span>
-              </div>
-              <input type="range" min="15" max="100" value={windSpeed} onChange={(e) => setWindSpeed(Number(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
-                <span style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                  <Activity size={14} style={{ color: '#94a3b8' }} /> Coastal Storm Surge
-                </span>
-                <span style={{ fontWeight: '700', color: '#0f172a', backgroundColor: '#ffffff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>{slrMeters.toFixed(1)}m</span>
-              </div>
-              <input type="range" min="0.0" max="3.0" step="0.5" value={slrMeters} onChange={(e) => setSlrMeters(parseFloat(e.target.value))} style={{ width: '100%', cursor: 'pointer' }} />
-            </div>
+        {/* Dynamic SLR Slider Configuration */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex justify-between font-mono text-xs">
+            <span className="text-slate-400">Sea Level Surge:</span>
+            <span className="text-sky-400 font-bold">+{slrMeters.toFixed(1)}m</span>
           </div>
+          <input 
+            type="range" min="0.0" max="3.0" step="0.5" value={slrMeters} 
+            onChange={(e) => setSlrMeters(parseFloat(e.target.value))}
+            className="w-full accent-sky-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
+          />
+        </div>
 
-          {/* Ingestion Report Form */}
-          <div style={STYLES.cardSection}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
-              <FileText size={14} style={{ color: '#4f46e5' }} />
-              <h3 style={{ fontSize: '11px', fontWeight: '700', margin: 0, color: '#475569', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Emergency Situation Report</h3>
-            </div>
-            
-            <form onSubmit={handleIncidentPipelineSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <textarea 
-                value={incidentText} onChange={(e) => setIncidentText(e.target.value)}
-                placeholder="Describe current location damage or grid failures here..."
-                style={STYLES.textarea}
-              />
-              <div style={STYLES.fileRow}>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>Attach Drone Photo:</span>
-                <input type="file" accept="image/*" onChange={(e) => setSelectedImage(e.target.files[0])} style={{ fontSize: '12px', color: '#64748b', maxWidth: '180px' }} />
-              </div>
-              <button type="submit" disabled={loadingPipeline} style={STYLES.btnSubmit}>
-                {loadingPipeline ? "PROCESSING PIPELINE INFERENCE..." : "Submit Report to AI Triage"}
-              </button>
-            </form>
+        <hr className="border-white/5" />
+
+        {/* Air Gap Mode Defensive Toggle Switch */}
+        <div className="flex items-center justify-between p-2 bg-slate-950/40 border border-white/5 rounded-lg">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-300">Air-Gapped Hardware Mode</span>
+            <span className="text-[10px] text-slate-400">Enforce local model evaluation</span>
           </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" checked={airGapped} 
+              onChange={(e) => setAirGapped(e.target.checked)} 
+              className="sr-only peer" 
+            />
+            <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 peer-checked:after:bg-amber-400 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500/20 peer-checked:border peer-checked:border-amber-500/30"></div>
+          </label>
+        </div>
+        {airGapped && (
+          <div className="text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2 rounded text-center animate-pulse tracking-wide">
+            LOCAL IN-MEMORY INFERENCE ACTIVE (CPU / BF16)
+          </div>
+        )}
+      </section>
 
-          {playbookResult && (
-            <div style={STYLES.cardDirective}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#16a34a', marginBottom: '8px' }}>
-                <CheckCircle2 size={16} />
-                <h4 style={{ fontSize: '11px', fontWeight: '700', margin: 0, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Tactical Action Directives</h4>
-              </div>
-              <p style={{ fontSize: '14px', color: '#1e293b', fontWeight: '600', margin: '0 0 10px 0', lineHeight: '1.5' }}>{playbookResult.actionable_tactical_playbook}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0', fontSize: '11px', color: '#64748b' }}>
-                <div>Triage: <span style={{ color: '#1e293b', fontWeight: '600' }}>{playbookResult.triage_incident_profile}</span></div>
-                <div>Visual: <span style={{ color: '#1e293b', fontWeight: '600' }}>{playbookResult.visual_verification}</span></div>
-              </div>
-            </div>
+      {/* PANEL HUD COMPONENT B: GRID ORCHESTRATION TOPOLOGICAL PHYSICS-GNN STATUS */}
+      <section className="aura-hud-panel panel-gnn-status absolute top-20 left-[360px] right-[400px] h-48 p-4 rounded-xl z-20 flex flex-col gap-3">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-1">Topological GNN Grid Isolation Analyzer</h2>
+            <p className="text-[11px] text-slate-400">Calculated kinetic power capture: <span className="font-mono font-bold text-slate-200">{derOutput} kW</span></p>
+          </div>
+          {activeThreatIndex !== null && (
+            <button 
+              onClick={() => setActiveThreatIndex(null)}
+              className="text-[10px] font-mono px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 rounded hover:bg-rose-500/20"
+            >
+              CLEAR ACTIVE THREAT TARGET
+            </button>
           )}
+        </div>
 
-          {/* Infrastructure Health Tracker*/}
-          <div style={STYLES.cardSection}>
-            <h4 style={{ fontSize: '11px', fontWeight: '700', margin: '0 0 4px 0', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Local Infrastructure Status</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {gridData?.assets?.map(asset => {
-                const isDown = asset.status.includes('DOWN');
-                const isIslanded = asset.status.includes('ISLANDED');
-                const statusType = isDown ? 'DOWN' : isIslanded ? 'ISLANDED' : 'NORMAL';
-                return (
-                  <div key={asset.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>{asset.name}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Vector: {asset.power_routing}</div>
-                    </div>
-                    <span style={STYLES.badgeStatus(statusType)}>
-                      {isDown ? 'Offline' : isIslanded ? 'Isolated' : 'Normal'}
-                    </span>
+        <div className="grid grid-cols-3 gap-3 h-full mt-1">
+          {gridAssets.map(asset => {
+            const isTargeted = asset.status.includes("CRITICAL") || asset.status.includes("SEVERED");
+            const isIslanded = asset.status.includes("ISLANDED");
+            return (
+              <div 
+                key={asset.id} 
+                onClick={() => flyToSpatialCoordinate(asset.coordinates)}
+                className={`p-3 bg-slate-950/50 border rounded-lg cursor-pointer flex flex-col justify-between transition-all ${
+                  isTargeted ? 'border-rose-500/40 bg-rose-950/10 hover:border-rose-400' :
+                  isIslanded ? 'border-blue-500/40 bg-blue-950/10 hover:border-blue-400' : 'border-white/5 hover:border-white/20'
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-start gap-1">
+                    <span className="text-[11px] font-bold tracking-wide truncate block max-w-[150px]">{asset.name}</span>
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 mt-1 ${isTargeted ? 'bg-rose-500 animate-ping' : isIslanded ? 'bg-blue-400 animate-pulse' : 'bg-emerald-400'}`} />
                   </div>
-                );
-              })}
+                  <span className="text-[9px] font-mono uppercase text-slate-400 block mt-0.5">{asset.type}</span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-[10px] font-mono text-slate-300 truncate">{asset.status}</div>
+                  <div className="text-[9px] font-mono text-slate-500 mt-0.5 truncate">{asset.power_routing}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* PANEL HUD COMPONENT C: ENVIRONMENTAL WATCHDOG SATELLITE TELEMETRY */}
+      <section className="aura-hud-panel panel-marine-sat absolute top-20 right-5 w-[360px] p-4 rounded-xl z-20 flex flex-col gap-3">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-teal-400 mb-1">Oceanographic Watchdog Telemetry</h2>
+          <p className="text-[11px] text-slate-400">Live oceanic anomaly matrices</p>
+        </div>
+        <hr className="border-white/5" />
+        <div className="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1">
+          {marineAnomalies.map((feat, i) => {
+            const props = feat.properties;
+            const isCritical = props.ai_watchdog_status === "CRITICAL_STORM_INCUBATION";
+            return (
+              <div 
+                key={i}
+                onClick={() => flyToSpatialCoordinate(feat.geometry.coordinates)}
+                className="p-2 bg-slate-950/40 border border-white/5 rounded-lg flex justify-between items-center text-xs cursor-pointer hover:border-teal-500/40 hover:bg-slate-900/40 transition-all"
+              >
+                <div className="flex flex-col max-w-[200px]">
+                  <span className="font-medium truncate text-slate-200">{props.location_name}</span>
+                  <span className={`text-[9px] font-mono mt-0.5 ${isCritical ? 'text-amber-400 font-bold' : 'text-slate-500'}`}>
+                    AI EVAL: {props.ai_watchdog_status}
+                  </span>
+                </div>
+                <div className="text-right font-mono text-[11px]">
+                  <div className="text-teal-400">ΔT: +{props.surface_temp_anomaly_celsius}°C</div>
+                  <div className="text-slate-400">{props.microplastic_density_ppm} PPM</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* PANEL HUD COMPONENT D: LOGISTICS AUDIO/TEXT DIALECT INGESTION ENGINE */}
+      <section className="aura-hud-panel panel-triage-audio absolute bottom-5 left-5 w-[420px] p-4 rounded-xl z-20 flex flex-col gap-3">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-1">Dialect-Mapped Logistics Transcriber</h2>
+          <p className="text-[11px] text-slate-400">Processes localized incident reports and executes protocols</p>
+        </div>
+        <hr className="border-white/5" />
+        
+        <form onSubmit={handleTriageSubmission} className="flex flex-col gap-2">
+          <textarea
+            value={manualReportText}
+            onChange={(e) => setManualReportText(e.target.value)}
+            placeholder="Enter emergency transmission text or dialect logs (e.g., 'Palisadoes lines dem under water...')"
+            className="w-full h-16 bg-slate-950/70 border border-white/10 rounded-lg p-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all resize-none"
+          />
+          <button 
+            type="submit" 
+            disabled={isProcessingReport}
+            className="w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:text-slate-400 text-white font-mono uppercase text-xs tracking-wider rounded-lg font-bold transition-all"
+          >
+            {isProcessingReport ? 'Evaluating NLP In-Memory Vector Grid...' : 'Process Tactical Transmission'}
+          </button>
+        </form>
+
+        {/* Tactical Playbook Output Marquee Window */}
+        {triageReport && (
+          <div className="mt-1 p-3 bg-purple-950/20 border border-purple-500/30 rounded-lg flex flex-col gap-2 animate-fadeIn">
+            <div className="flex justify-between items-center text-[10px] font-mono">
+              <span className="text-purple-400 font-bold uppercase">PROFILE: {triageReport.triage_incident_profile}</span>
+              <span className="text-slate-400">NODE MATCH: #{triageReport.matched_node_threat_index ?? 'NONE'}</span>
+            </div>
+            <div className="text-xs bg-slate-950/60 p-2 rounded font-mono border border-white/5 max-h-24 overflow-y-auto leading-relaxed text-slate-300">
+              <span className="text-amber-400 font-bold">PLAYBOOK: </span>
+              {triageReport.actionable_tactical_playbook}
+            </div>
+            <div className="text-[10px] italic text-slate-400 font-mono truncate">
+              Parsed: "{triageReport.transcription}"
             </div>
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* Right Side Interactive Mapbox Frame */}
-        <div style={{ flex: 1, position: 'relative', height: 'calc(100vh - 73px)', display: activeTab === 'map' || window.innerWidth > 768 ? 'block' : 'none' }}>
-          <Map 
-            ref={mapRef}
-            {...viewState} 
-            onMove={evt => setViewState(evt.viewState)} 
-            mapStyle="mapbox://styles/mapbox/dark-v11" 
-            mapboxAccessToken={MAPBOX_TOKEN}
-            style={{ width: '100%', height: '100%' }}
-          >
-            {floodGeoJson && (
-              <Source id="flood" type="geojson" data={floodGeoJson}>
-                <Layer type="fill" paint={{ 'fill-color': '#e11d48', 'fill-opacity': 0.25 }} />
-              </Source>
-            )}
-            {gridData?.assets?.map(asset => (
-              <Marker key={asset.id} latitude={asset.coordinates[1]} longitude={asset.coordinates[0]}>
-                <div 
-                  style={{
-                    width: '16px', height: '16px', borderRadius: '50%',
-                    backgroundColor: asset.status.includes('DOWN') ? '#e11d48' : asset.status.includes('ISLANDED') ? '#38bdf8' : '#16a34a',
-                    border: '2px solid #ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                  }}
-                  title={asset.name}
-                />
-              </Marker>
-            ))}
-          </Map>
+      {/* PANEL HUD COMPONENT E: MUTUAL AID VECTOR GRAPH SPATIAL ROUTER */}
+      <section className="aura-hud-panel panel-mutual-aid absolute bottom-5 right-5 w-[400px] p-4 rounded-xl z-20 flex flex-col gap-3">
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1">Mutual Aid Real-Time Routing</h2>
+          <p className="text-[11px] text-slate-400">Nearest-Neighbor spatial allocation models</p>
         </div>
-      </div>
-
-        {/* Mobile View Navigation Toggle Sticky footer */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex z-50 shadow-lg">
-          <button 
-            onClick={() => setActiveTab('controls')}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', border: 'none', background: activeTab === 'controls' ? '#f8fafc' : 'none', color: activeTab === 'controls' ? '#4f46e5' : '#94a3b8', cursor: 'pointer' }}
-          >
-            <Sliders size={18} /> <span style={{ fontSize: '11px', fontWeight: '600' }}>Dashboard</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('map')}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', border: 'none', background: activeTab === 'map' ? '#f8fafc' : 'none', color: activeTab === 'map' ? '#4f46e5' : '#94a3b8', cursor: 'pointer' }}
-          >
-            <MapIcon size={18} /> <span style={{ fontSize: '11px', fontWeight: '600' }}>Telemetry Map</span>
-          </button>
+        <hr className="border-white/5" />
+        <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+          {routingGeoJson?.features?.map((route, idx) => {
+            const props = route.properties;
+            return (
+              <div 
+                key={idx}
+                className="p-2 bg-slate-950/40 border border-white/5 rounded-lg flex flex-col gap-1 text-xs hover:border-indigo-500/30 transition-all"
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-slate-200 truncate max-w-[180px]">{props.origin_kitchen}</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded">
+                    {props.permit_verification}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <span>➔ Routed Vector to:</span>
+                  <span className="text-slate-300 truncate max-w-[180px] font-medium">{props.destination_shelter}</span>
+                </div>
+              </div>
+            );
+          })}
+          {(!routingGeoJson || routingGeoJson.features.length === 0) && (
+            <div className="text-center font-mono text-slate-500 py-4 text-xs">No active supply chains compiled</div>
+          )}
         </div>
+      </section>
 
-      
     </div>
   );
 }
