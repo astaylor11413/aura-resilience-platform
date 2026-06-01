@@ -149,6 +149,23 @@ export default function App() {
     }))
   };
 
+  // Parse your backend array
+  const substationGeoJson = gridData?.assets ? {
+    type: "FeatureCollection",
+    features: gridData.assets.map(asset => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: asset.coordinates // Expects [longitude, latitude] from app.py
+      },
+      properties: {
+        id: asset.id,
+        name: asset.name,
+        status: asset.status // Matches the "ONLINE // CENTRALIZED (100% Stability)" payload
+      }
+    }))
+  } : null;
+
   return (
     <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
 
@@ -189,31 +206,33 @@ export default function App() {
           </Source>
 
           {/* SUBSTATIONS VECTOR LAYER */}
-          <Source type="geojson" data={substationGeoJson}>
-            <Layer
-              id="substations-layer"
-              type="circle"
-              paint={{
-                'circle-radius': 7,
-                'circle-color': [
-                  'case',
-                  // Check for DOWN, CRITICAL, or SEVERED variants
-                  ['inline', 'down', ['lowercase', ['get', 'status']]], '#f43f5e',
-                  ['inline', 'critical', ['lowercase', ['get', 'status']]], '#f43f5e',
-                  ['inline', 'severed', ['lowercase', ['get', 'status']]], '#f43f5e',
+          {substationGeoJson && (
+            <Source type="geojson" data={substationGeoJson}>
+              <Layer
+                id="substations-layer"
+                type="circle"
+                paint={{
+                  'circle-radius': 8,
+                  'circle-color': [
+                    'case',
+                    // If status string contains 'down', 'critical', or 'severed' -> Red
+                    ['in', 'down', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#e11d48',
+                    ['in', 'critical', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#e11d48',
+                    ['in', 'severed', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#e11d48',
 
-                  // Check for ISLANDED variants
-                  ['inline', 'islanded', ['lowercase', ['get', 'status']]], '#38bdf8',
-                  ['inline', 'autonomous', ['lowercase', ['get', 'status']]], '#38bdf8',
+                    // If status string contains 'islanded' or 'autonomous' -> Sky Blue
+                    ['in', 'islanded', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#38bdf8',
+                    ['in', 'autonomous', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#38bdf8',
 
-                  // Default color for ONLINE / NORMAL
-                  '#10b981'
-                ],
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#0f172a'
-              }}
-            />
-          </Source>
+                    // Default Fallback -> Emerald Green
+                    '#16a34a'
+                  ],
+                  'circle-stroke-width': 2,
+                  'circle-stroke-color': '#ffffff'
+                }}
+              />
+            </Source>
+          )}
         </Map>
       </div>
 
@@ -312,7 +331,7 @@ export default function App() {
                     key={asset.id}
                     onClick={() => flyToSpatialCoordinate(asset.coordinates)}
                     className={`p-2.5 bg-slate-950/50 border rounded-lg cursor-pointer flex flex-col justify-between transition-all ${isTargeted ? 'border-rose-500/40 bg-rose-950/10 hover:border-rose-400' :
-                        isIslanded ? 'border-blue-500/40 bg-blue-950/10 hover:border-blue-400' : 'border-white/5 hover:border-white/20'
+                      isIslanded ? 'border-blue-500/40 bg-blue-950/10 hover:border-blue-400' : 'border-white/5 hover:border-white/20'
                       }`}
                   >
                     <div>
