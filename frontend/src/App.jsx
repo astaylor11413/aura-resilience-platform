@@ -29,50 +29,53 @@ export default function App() {
   const [manualReportText, setManualReportText] = useState('');
 
   // 1. Initialize Mapbox Canvas Base Layer
-  useEffect(() => {
-    if (map.current) return; // Only instantiate map framework once
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11', // Industrial dark environmental baseline style
-      center: [-76.78, 17.95], // Centered around Jamaica/Kingston region
-      zoom: 11,
-      pitch: 35
+useEffect(() => {
+  if (map.current) return; // Only instantiate map framework once
+  
+  map.current = new mapboxgl.Map({
+    container: mapContainer.current,
+    style: 'mapbox://styles/mapbox/dark-v11', // Industrial dark environmental baseline style
+    center: [-76.78, 17.95], // Centered around Jamaica/Kingston region
+    zoom: 11,
+    pitch: 35
+  });
+
+  map.current.on('load', () => {
+    // Add empty sources for dynamic data layers
+    map.current.addSource('inundation-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+    
+    map.current.addLayer({
+      id: 'inundation-layer',
+      type: 'fill',
+      source: 'inundation-source',
+      paint: {
+        'fill-color': '#0ea5e9',
+        'fill-opacity': 0.45,
+        'fill-outline-color': '#38bdf8'
+      }
     });
 
-    map.current.on('load', () => {
-      // Add empty sources for dynamic data layers
-      map.current.addSource('inundation-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-      map.current.addLayer({
-        id: 'inundation-layer',
-        type: 'fill',
-        source: 'inundation-source',
-        paint: {
-          'fill-color': '#0ea5e9',
-          'fill-opacity': 0.45,
-          'fill-outline-color': '#38bdf8'
-        }
-      });
-
-      map.current.addSource('mutual-aid-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-      map.current.addLayer({
-        id: 'mutual-aid-layer',
-        type: 'line',
-        source: 'mutual-aid-source',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': '#a855f7',
-          'line-width': 4,
-          'line-dasharray': [2, 2]
-        }
-      });
+    map.current.addSource('mutual-aid-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
     });
-    // Register the Substation Data Source 
+    
+    map.current.addLayer({
+      id: 'mutual-aid-layer',
+      type: 'line',
+      source: 'mutual-aid-source',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#a855f7',
+        'line-width': 4,
+        'line-dasharray': [2, 2]
+      }
+    });
+
+    //Register the Substation Data Source
     map.current.addSource('substations-source', {
       type: 'geojson',
       data: {
@@ -85,14 +88,13 @@ export default function App() {
       }
     });
 
-    //Add the Neon Circle Vector Layer 
+    // Add the Neon Circle Vector Layer
     map.current.addLayer({
       id: 'substations-layer',
       type: 'circle',
       source: 'substations-source',
       paint: {
         'circle-radius': 7,
-        // Convert status string cleanly to lowercase, then execute a standard match sequence
         'circle-color': [
           'match',
           ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
@@ -105,7 +107,9 @@ export default function App() {
         'circle-stroke-color': '#0f172a'
       }
     });
+  }); // Closes map.current.on('load')
 
+}, [gridAssets]); // Closes useEffect and tracks gridAssets updates
   // 2. Telemetry Core Synchronizer: Grid Simulation & Physics GNN Data Pipeline
   useEffect(() => {
     const threatQuery = activeThreatIndex !== null ? `&threat_index=${activeThreatIndex}` : '';
