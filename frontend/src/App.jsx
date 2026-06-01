@@ -28,100 +28,95 @@ export default function App() {
   const [isProcessingReport, setIsProcessingReport] = useState(false);
   const [manualReportText, setManualReportText] = useState('');
 
-  // 1. Initialize Mapbox Canvas Base Layer
-useEffect(() => {
-  if (map.current) return; // Only instantiate map framework once
-  
-  map.current = new mapboxgl.Map({
-    container: mapContainer.current,
-    style: 'mapbox://styles/mapbox/dark-v11', // Industrial dark environmental baseline style
-    center: [-76.78, 17.95], // Centered around Jamaica/Kingston region
-    zoom: 11,
-    pitch: 35
-  });
-
-  map.current.on('load', () => {
-    // Add empty sources for dynamic data layers
-    map.current.addSource('inundation-source', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] }
-    });
+ // 1. Initialize Mapbox Canvas Base Layer (RUNS EXACTLY ONCE ON MOUNT)
+  useEffect(() => {
+    if (map.current) return; // Guard clause ensures single canvas context allocation
     
-    map.current.addLayer({
-      id: 'inundation-layer',
-      type: 'fill',
-      source: 'inundation-source',
-      paint: {
-        'fill-color': '#0ea5e9',
-        'fill-opacity': 0.45,
-        'fill-outline-color': '#38bdf8'
-      }
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-76.78, 17.95], 
+      zoom: 11,
+      pitch: 35
     });
 
-    map.current.addSource('mutual-aid-source', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: [] }
-    });
-    
-    map.current.addLayer({
-      id: 'mutual-aid-layer',
-      type: 'line',
-      source: 'mutual-aid-source',
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: {
-        'line-color': '#a855f7',
-        'line-width': 4,
-        'line-dasharray': [2, 2]
-      }
+    map.current.on('load', () => {
+      // Register Inundation Source Baseline Layer
+      map.current.addSource('inundation-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      map.current.addLayer({
+        id: 'inundation-layer',
+        type: 'fill',
+        source: 'inundation-source',
+        paint: {
+          'fill-color': '#0ea5e9',
+          'fill-opacity': 0.45,
+          'fill-outline-color': '#38bdf8'
+        }
+      });
+
+      // Register Logistics Route Source Baseline Layer
+      map.current.addSource('mutual-aid-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      map.current.addLayer({
+        id: 'mutual-aid-layer',
+        type: 'line',
+        source: 'mutual-aid-source',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#a855f7',
+          'line-width': 4,
+          'line-dasharray': [2, 2]
+        }
+      });
+
+      // CLEAN INITIALIZATION: Register empty point vector source matrix fallback
+      map.current.addSource('substations-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+
+      // Render Circle Canvas Points explicitly over baseline geometry sets
+      map.current.addLayer({
+        id: 'substations-layer',
+        type: 'circle',
+        source: 'substations-source',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': [
+            'match',
+            ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
+            'critical', '#f43f5e',
+            'severed', '#f43f5e',
+            'islanded', '#38bdf8',
+            '#10b981' // Nominal Emerald Green Baseline Color
+          ],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#0f172a'
+        }
+      });
     });
 
-    //Register the Substation Data Source
-    map.current.addSource('substations-source', {
-      type: 'geojson',
-      data: {
+  }, []); // EMPTY ARRAY: Keeps initialization separate from data streams
+
+
+  // 2. Real-Time Telemetry Synchronization Engine
+  useEffect(() => {
+    if (map.current && map.current.isStyleLoaded() && map.current.getSource('substations-source')) {
+      map.current.getSource('substations-source').setData({
         type: 'FeatureCollection',
-        features: gridAssets.length > 0 ? gridAssets.map(asset => ({
+        features: gridAssets.map(asset => ({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: asset.coordinates },
           properties: { id: asset.id, name: asset.name, status: asset.status || 'NOMINAL' }
-        })) : []
-      }
-    });
-
-    // Add the Neon Circle Vector Layer
-    map.current.addLayer({
-      id: 'substations-layer',
-      type: 'circle',
-      source: 'substations-source',
-      paint: {
-        'circle-radius': 7,
-        'circle-color': [
-          'match',
-          ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
-          'critical', '#f43f5e',  // Neon Rose
-          'severed', '#f43f5e',   // Neon Rose
-          'islanded', '#38bdf8',  // Autonomous Cyan
-          '#10b981'               // Nominal Emerald Green (Default fallback match)
-        ],
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#0f172a'
-      }
-    });
-  }); // Closes map.current.on('load')
-
-}, [gridAssets]); // Closes useEffect and tracks gridAssets updates
-  // 2. Telemetry Core Synchronizer: Grid Simulation & Physics GNN Data Pipeline
-  useEffect(() => {
-    const threatQuery = activeThreatIndex !== null ? `&threat_index=${activeThreatIndex}` : '';
-    fetch(`http://localhost:8000/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}${threatQuery}`)
-      .then(res => res.json())
-      .then(data => {
-        setGridAssets(data.assets || []);
-        setGridState(data.grid_state);
-        setDerOutput(data.calculated_der_output_kw);
-      })
-      .catch(err => console.error("Grid Sync Fault:", err));
-  }, [windSpeed, activeThreatIndex]);
+        }))
+      });
+    }
+  }, [gridAssets]); // Executes instantly whenever dependencies refresh from sliders
 
   useEffect(() => {
   if (map.current && map.current.getSource('substations-source') && gridAssets.length > 0) {
