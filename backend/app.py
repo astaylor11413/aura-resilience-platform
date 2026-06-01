@@ -95,15 +95,15 @@ def run_physics_informed_gnn(wind_speed, active_threat_index=None):
     """
     node_features = []
     for asset in mock_grid_substations:
-        # Standard vulnerability rating based on engineering criticality
-        vuln = 0.7 if wind_speed > 55 and asset["type"] == "Main-Transmission" else 0.2
+        # Heavily escalate transmission risks during storm thresholds
+        vuln = 0.85 if wind_speed > 70 and asset["type"] == "Main-Transmission" else 0.2
+        
         # Escalate risk factors if a citizen report maps explicitly to this node's sector
         if asset["graph_index"] == active_threat_index:
             vuln += 0.4
         node_features.append([1.0, float(asset["type"] == "Critical-Hospital-Node"), vuln])
     
     X = np.array(node_features)
-    # GCN Layer Propagate pass: A * X
     graph_convolution = np.dot(grid_adjacency, X)
     
     stability_metrics = {}
@@ -112,21 +112,21 @@ def run_physics_informed_gnn(wind_speed, active_threat_index=None):
         neighbor_stress = graph_convolution[idx][2]
         
         # Calculate localized voltage stability based on physics degradation
-        stability = 1.0 - (0.003 * wind_speed) - (0.09 * neighbor_stress)
+        stability = 1.0 - (0.004 * wind_speed) - (0.12 * neighbor_stress)
         stability = max(0.0, min(1.0, stability))
         
-        status = "ONLINE // CENTRALIZED"
-        if stability < 0.45:
+        if stability < 0.50 or (wind_speed >= 75 and asset["type"] == "Main-Transmission"):
             status = "CRITICAL // SEVERED // DOWN"
         elif wind_speed >= 55.0 and asset["type"] in ["Critical-Hospital-Node", "Microgrid-Hub"]:
             status = "ISLANDED // ACTIVE // AUTONOMOUS"
+        else:
+            status = "ONLINE // CENTRALIZED"
             
         stability_metrics[asset["id"]] = {
             "voltage_stability_pct": round(stability * 100, 2),
             "calculated_status": status
         }
     return stability_metrics
-
 
 class FoodSurplusPayload(BaseModel):
     restaurant_id: str
@@ -288,17 +288,23 @@ def generate_dialect_broadcast():
     text_to_speak = data.get("text", "Warning: Move inland.")
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
     CARIBBEAN_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
-    if not ELEVENLABS_API_KEY: return jsonify({"info": "Key missing. Client WebSpeech Fallback activated."}), 200
+    
+    if not ELEVENLABS_API_KEY: 
+        return jsonify({"info": "Key missing. Client WebSpeech Fallback activated."}), 200
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{CARIBBEAN_VOICE_ID}"
     headers = {"Accept": "audio/mpeg", "Content-Type": "application/json", "xi-api-key": ELEVENLABS_API_KEY}
+    
     try:
         res = requests.post(url, json={"text": text_to_speak, "model_id": "eleven_monolingual_v1"}, headers=headers, stream=True)
         if res.status_code == 200:
             with open("/tmp/alert.mp3", "wb") as f:
                 for c in res.iter_content(1024): f.write(c)
             return send_file("/tmp/alert.mp3", mimetype="audio/mpeg")
-    except Exception as e: return jsonify({"error": str(e)}), 500
+        else:
+            return jsonify({"info": "ElevenLabs returned non-200, browser fallback triggered"}), 200
+    except Exception as e: 
+        return jsonify({"error": str(e), "info": "Fallback route executed"}), 500
 
 # 7. Spatial Routing Network Optimizer
 @app.route('/api/v1/mutual-aid/routes', methods=['GET'])
