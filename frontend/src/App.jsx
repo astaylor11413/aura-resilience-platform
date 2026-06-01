@@ -139,27 +139,38 @@ export default function App() {
     }));
   };
 
-  // Format substation point features dynamically from state
-  const substationGeoJson = gridAssets?.assets ? {
+  // Safe JavaScript translation of telemetry strings to basic string categorization tokens
+  const substationGeoJson = (gridAssets && gridAssets.length > 0) ? {
     type: "FeatureCollection",
-    features: gridAssets.assets.map(asset => ({
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: asset.coordinates // Expects [longitude, latitude] from app.py
-      },
-      properties: {
-        id: asset.id,
-        name: asset.name,
-        status: asset.status // Matches the "ONLINE // CENTRALIZED (100% Stability)" payload
+    features: gridAssets.map(asset => {
+      const rawStatus = (asset.status || 'nominal').toLowerCase();
+      let cleanStatus = 'nominal';
+
+      if (rawStatus.includes('down') || rawStatus.includes('critical') || rawStatus.includes('severed')) {
+        cleanStatus = 'critical';
+      } else if (rawStatus.includes('islanded') || rawStatus.includes('autonomous')) {
+        cleanStatus = 'islanded';
       }
-    }))
+
+      return {
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: asset.coordinates
+        },
+        properties: {
+          id: asset.id,
+          name: asset.name,
+          status: cleanStatus
+        }
+      };
+    })
   } : null;
 
   return (
     <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
 
-      {/* MAP UNDERLAY CANVAS - DECLARATIVE IMPLEMENTATION */}
+      {/* MAP UNDERLAY CANVAS */}
       <div className="map-underlay-container absolute top-0 left-0 w-full h-full z-0">
         <Map
           {...viewState}
@@ -204,18 +215,11 @@ export default function App() {
                 paint={{
                   'circle-radius': 8,
                   'circle-color': [
-                    'case',
-                    // If status string contains 'down', 'critical', or 'severed' -> Red
-                    ['in', 'down', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#e11d48',
-                    ['in', 'critical', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#e11d48',
-                    ['in', 'severed', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#e11d48',
-
-                    // If status string contains 'islanded' or 'autonomous' -> Sky Blue
-                    ['in', 'islanded', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#38bdf8',
-                    ['in', 'autonomous', ['lowercase', ['coalesce', ['get', 'status'], '']]], '#38bdf8',
-
-                    // Default Fallback -> Emerald Green
-                    '#16a34a'
+                    'match',
+                    ['get', 'status'],
+                    'critical', '#e11d48',
+                    'islanded', '#38bdf8',
+                    '#16a34a' 
                   ],
                   'circle-stroke-width': 2,
                   'circle-stroke-color': '#ffffff'
@@ -327,7 +331,7 @@ export default function App() {
                     <div>
                       <div className="flex justify-between items-start gap-1">
                         <span className="text-[11px] font-bold tracking-wide truncate block max-w-[120px]">{asset.name}</span>
-                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 mt-1 ${isTargeted ? 'bg-rose-500 animate-ping' : isIslanded ? 'bg-blue-400 animate-pulse' : 'bg-emerald-400'}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 mt-1 ${isTargeted ? 'bg-rose-500 ' : isIslanded ? 'bg-blue-400 animate-pulse' : 'bg-emerald-400'}`} />
                       </div>
                       <span className="text-[9px] font-mono uppercase text-slate-400 block mt-0.5">{asset.type}</span>
                     </div>
