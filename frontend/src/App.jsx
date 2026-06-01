@@ -275,7 +275,7 @@ export default function App() {
           <Map 
             ref={mapRef}
             {...viewState} onMove={evt => setViewState(evt.viewState)} 
-            mapStyle="mapbox://styles/mapbox/light-v11" 
+            mapStyle="mapbox://styles/mapbox/dark-v11" 
             mapboxAccessToken={MAPBOX_TOKEN}
           >
             {floodGeoJson && (
