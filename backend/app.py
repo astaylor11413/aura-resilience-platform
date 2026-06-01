@@ -32,18 +32,19 @@ _pipelines = {
 
 def get_pipeline(pipeline_type):
     """
-    Lazy-loads pipelines with half-precision (float16) and optimized CPU memory allocation.
-    Only consumes RAM when a user actively hits the endpoint.
+    Lazy-loads pipelines with CPU-compatible precision settings.
+    Uses bfloat16 to save memory where CPU kernels support it, and safely falls back
+    to float32 if the architecture throws precision mismatch errors.
     """
     if _pipelines[pipeline_type] is not None:
         return _pipelines[pipeline_type]
 
     print(f"Lazy Loading Aura {pipeline_type.upper()} Engine into RAM...")
     
-    # Pipeline model configuration options to compress RAM overhead
+    # Use bfloat16 which has excellent native CPU kernel support for LayerNorm ops
     model_kwargs = {
-        "torch_dtype": torch.float16,   
-        "low_cpu_mem_usage": True       
+        "torch_dtype": torch.bfloat16,   # Memory savings optimized for CPU execution
+        "low_cpu_mem_usage": True        # Prevents memory doubling spikes during weight loading
     }
 
     try:
@@ -69,14 +70,15 @@ def get_pipeline(pipeline_type):
                 model_kwargs=model_kwargs
             )
     except Exception as e:
-        print(f"Optimization Initialization Warning for {pipeline_type}:", e)
-        # Fallback to standard initialization if float16 processing not supported
+        print(f"Primary precision init warning for {pipeline_type}, falling back to float32: {e}")
+        # Clean fallback to float32 with low_cpu memory management active
+        fallback_kwargs = {"low_cpu_mem_usage": True}
         if pipeline_type == "triage":
-            _pipelines["triage"] = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli", device=-1)
+            _pipelines["triage"] = pipeline("zero-shot-classification", model="typeform/distilbert-base-uncased-mnli", device=-1, model_kwargs=fallback_kwargs)
         elif pipeline_type == "vision":
-            _pipelines["vision"] = pipeline("image-classification", model="google/vit-base-patch16-224", device=-1)
+            _pipelines["vision"] = pipeline("image-classification", model="google/vit-base-patch16-224", device=-1, model_kwargs=fallback_kwargs)
         elif pipeline_type == "playbook":
-            _pipelines["playbook"] = pipeline("text-generation", model="sshleifer/distilbart-cnn-12-6", device=-1)
+            _pipelines["playbook"] = pipeline("text-generation", model="sshleifer/distilbart-cnn-12-6", device=-1, model_kwargs=fallback_kwargs)
 
     return _pipelines[pipeline_type]
 
