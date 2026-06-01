@@ -1,16 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import mapboxgl from 'mapbox-gl';
+import React, { useState, useEffect } from 'react';
+import Map, { Source, Layer } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Retrieve MAPBOX token cleanly
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
 export default function App() {
-  // Map core references
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const pendingData = useRef({ assets: [], inundation: null });
-
   // Simulation State Matrix
   const [windSpeed, setWindSpeed] = useState(25);
   const [slrMeters, setSlrMeters] = useState(0.0);
@@ -24,102 +19,24 @@ export default function App() {
   const [marineAnomalies, setMarineAnomalies] = useState([]);
   const [triageReport, setTriageReport] = useState(null);
   const [routingGeoJson, setRoutingGeoJson] = useState({ type: 'FeatureCollection', features: [] });
+  const [inundationGeoJson, setInundationGeoJson] = useState({ type: 'FeatureCollection', features: [] });
   
   // UI Operational States
   const [isProcessingReport, setIsProcessingReport] = useState(false);
   const [manualReportText, setManualReportText] = useState('');
 
-  // 1. Map Initialization (RUNS EXACTLY ONCE ON MOUNT)
-  useEffect(() => {
-    if (map.current) return; 
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
-      center: [-76.78, 17.95], 
-      zoom: 11,
-      pitch: 35
-    });
+  // Map Viewport State
+  const [viewState, setViewState] = useState({
+    longitude: -76.78,
+    latitude: 17.95,
+    zoom: 11,
+    pitch: 35
+  });
 
-    map.current.on('load', () => {
-      // Register Inundation Vector Source & Layer
-      map.current.addSource('inundation-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-      map.current.addLayer({
-        id: 'inundation-layer',
-        type: 'fill',
-        source: 'inundation-source',
-        paint: {
-          'fill-color': '#0ea5e9',
-          'fill-opacity': 0.45,
-          'fill-outline-color': '#38bdf8'
-        }
-      });
-
-      // Register Mutual Aid Route Source & Layer
-      map.current.addSource('mutual-aid-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-      map.current.addLayer({
-        id: 'mutual-aid-layer',
-        type: 'line',
-        source: 'mutual-aid-source',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': '#a855f7',
-          'line-width': 4,
-          'line-dasharray': [2, 2]
-        }
-      });
-
-      // Register Grid Substation Vector Point Source & Layer
-      map.current.addSource('substations-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-      map.current.addLayer({
-        id: 'substations-layer',
-        type: 'circle',
-        source: 'substations-source',
-        paint: {
-          'circle-radius': 7,
-          'circle-color': [
-            'match',
-            ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
-            'critical', '#f43f5e',
-            'severed', '#f43f5e',
-            'islanded', '#38bdf8',
-            '#10b981'
-          ],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#0f172a'
-        }
-      });
-    });
-  }, []);
-
-  // 2. Real-Time Telemetry Synchronization Engine
-  useEffect(() => {
-    pendingData.current.assets = gridAssets;
-    if (map.current && map.current.isStyleLoaded() && map.current.getSource('substations-source')) {
-      map.current.getSource('substations-source').setData({
-        type: 'FeatureCollection',
-        features: gridAssets.map(asset => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: asset.coordinates },
-          properties: { id: asset.id, name: asset.name, status: asset.status || 'NOMINAL' }
-        }))
-      });
-    }
-  }, [gridAssets]);
-
-  // 3. Grid Simulation API Fetch Pipeline
+  // 1. Grid Simulation API Fetch Pipeline
   useEffect(() => {
     const threatQuery = activeThreatIndex !== null ? `&threat_index=${activeThreatIndex}` : '';
-    fetch(`http://localhost:8000/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}${threatQuery}`)
+    fetch(`https://aura-resilience-platform-qa.onrender.com/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}${threatQuery}`)
       .then(res => res.json())
       .then(data => {
         setGridAssets(data.assets || []);
@@ -129,37 +46,28 @@ export default function App() {
       .catch(err => console.error("Grid Sync Fault:", err));
   }, [windSpeed, activeThreatIndex]);
 
-  // 4. Inundation Vector Sync Pipeline
+  // 2. Inundation Vector Sync Pipeline
   useEffect(() => {
-    fetch(`http://localhost:8000/api/v1/hazard/inundation?slr_meters=${slrMeters}`)
+    fetch(`https://aura-resilience-platform-qa.onrender.com/api/v1/hazard/inundation?slr_meters=${slrMeters}`)
       .then(res => res.json())
-      .then(geoJson => {
-        if (map.current && map.current.isStyleLoaded() && map.current.getSource('inundation-source')) {
-          map.current.getSource('inundation-source').setData(geoJson);
-        }
-      })
+      .then(geoJson => setInundationGeoJson(geoJson))
       .catch(err => console.error("Inundation Vector Fault:", err));
   }, [slrMeters]);
 
-  // 5. Ingestion Sync: Fetch Static Oceanographic Vectors & Logistics Paths
+  // 3. Ingestion Sync: Fetch Static Oceanographic Vectors & Logistics Paths
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/marine/thermal-anomalies')
+    fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/marine/thermal-anomalies')
       .then(res => res.json())
       .then(data => setMarineAnomalies(data.features || []))
       .catch(err => console.error("Marine Thermal Vector Fault:", err));
 
-    fetch('http://localhost:8000/api/v1/spatial/mutual-aid-paths')
+    fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/spatial/mutual-aid-paths')
       .then(res => res.json())
-      .then(geoJson => {
-        setRoutingGeoJson(geoJson || { type: 'FeatureCollection', features: [] });
-        if (map.current && map.current.isStyleLoaded() && map.current.getSource('mutual-aid-source')) {
-          map.current.getSource('mutual-aid-source').setData(geoJson);
-        }
-      })
+      .then(geoJson => setRoutingGeoJson(geoJson || { type: 'FeatureCollection', features: [] }))
       .catch(err => console.error("Logistics Route Matrix Fault:", err));
   }, []);
 
-  // 6. Actionable Incident Submission Handler
+  // 4. Actionable Incident Submission Handler
   const handleTriageSubmission = async (e) => {
     e.preventDefault();
     if (!manualReportText.trim()) return;
@@ -171,7 +79,7 @@ export default function App() {
     formData.append("wind_speed", windSpeed.toString());
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/voice/report', {
+      const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
         method: 'POST',
         body: formData
       });
@@ -190,7 +98,7 @@ export default function App() {
     }
   };
 
-  // 7. Audio Broadcast Engine
+  // 5. Audio Broadcast Engine
   const executeVoiceBroadcast = async (textToSpeak) => {
     if (airGapped) {
       const hostUtterance = new SpeechSynthesisUtterance(textToSpeak);
@@ -200,7 +108,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/voice/broadcast', {
+      const res = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: textToSpeak })
@@ -222,17 +130,88 @@ export default function App() {
   };
 
   const flyToSpatialCoordinate = (coords) => {
-    if (!map.current) return;
-    map.current.flyTo({ center: coords, zoom: 13, speed: 1.2 });
+    setViewState(prev => ({
+      ...prev,
+      longitude: coords[0],
+      latitude: coords[1],
+      zoom: 13,
+      transitionDuration: 1200
+    }));
+  };
+
+  // Format substation point features dynamically from state
+  const substationGeoJson = {
+    type: 'FeatureCollection',
+    features: gridAssets.map(asset => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: asset.coordinates },
+      properties: { id: asset.id, name: asset.name, status: asset.status || 'NOMINAL' }
+    }))
   };
 
   return (
     <div className="dashboard-workspace relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
       
-      {/* MAP UNDERLAY CANVAS - MOVED LAYER ORDER AND Z-INDEX IS SPECIFIED CLEARLY TO PREVENT CLICK LOSS */}
-      <div ref={mapContainer} className="map-underlay-container absolute top-0 left-0 w-full h-full z-0" style={{ zIndex: 0 }} />
+      {/* MAP UNDERLAY CANVAS - DECLARATIVE IMPLEMENTATION */}
+      <div className="absolute top-0 left-0 w-full h-full z-0">
+        <Map
+          {...viewState}
+          onMove={evt => setViewState(evt.viewState)}
+          mapboxAccessToken={MAPBOX_TOKEN}
+          mapStyle="mapbox://styles/mapbox/dark-v11"
+          style={{ width: '100%', height: '100%' }}
+        >
+          {/* Inundation Layer */}
+          <Source type="geojson" data={inundationGeoJson}>
+            <Layer
+              id="inundation-layer"
+              type="fill"
+              paint={{
+                'fill-color': '#0ea5e9',
+                'fill-opacity': 0.45,
+                'fill-outline-color': '#38bdf8'
+              }}
+            />
+          </Source>
 
-      {/* SYSTEM CONTROLS FOREGROUND CONTAINER - EXPLICIT POINTER INTERACTION RE-ENABLED */}
+          {/* Mutual Aid Route Layer */}
+          <Source type="geojson" data={routingGeoJson}>
+            <Layer
+              id="mutual-aid-layer"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': '#a855f7',
+                'line-width': 4,
+                'line-dasharray': [2, 2]
+              }}
+            />
+          </Source>
+
+          {/* Substations Layer */}
+          <Source type="geojson" data={substationGeoJson}>
+            <Layer
+              id="substations-layer"
+              type="circle"
+              paint={{
+                'circle-radius': 7,
+                'circle-color': [
+                  'match',
+                  ['lowercase', ['coalesce', ['get', 'status'], 'nominal']],
+                  'critical', '#f43f5e',
+                  'severed', '#f43f5e',
+                  'islanded', '#38bdf8',
+                  '#10b981'
+                ],
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#0f172a'
+              }}
+            />
+          </Source>
+        </Map>
+      </div>
+
+      {/* SYSTEM CONTROLS FOREGROUND CONTAINER */}
       <div className="relative w-full h-full pointer-events-none z-30 flex flex-col justify-between">
         
         {/* PLATFORM HEADER */}
