@@ -306,5 +306,15 @@ def calculate_optimal_routing():
     routes_geojson = {"type": "FeatureCollection", "features": []}
     return jsonify(routes_geojson), 200
 
+# Root Welcome Route
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({
+        "status": "online",
+        "system": "Aura Resilience Engine API",
+        "version": "v3.0.0",
+        "documentation": "/api/v1/health"
+    }), 200
+
 if __name__ == '__main__':
     app.run(port=8000, debug=True)

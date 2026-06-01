@@ -5,6 +5,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 const MAPBOX_TOKEN = 'YOUR_MAPBOX_ACCESS_TOKEN';
 
+//Project base URL
+const BACKEND_API_BASE = "https://aura-resilience-platform-qa.onrender.com/";
+
 export default function App() {
   const [viewState, setViewState] = useState({ latitude: 17.96, longitude: -76.79, zoom: 9.5 });
   const [windSpeed, setWindSpeed] = useState(25);
@@ -22,13 +25,17 @@ export default function App() {
   const [loadingPipeline, setLoadingPipeline] = useState(false);
   const [activeThreatIndex, setActiveThreatIndex] = useState(null);
 
+  // Sync Satellite Ocean Layer data from Cloud Fabric
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/v1/ocean/telemetry').then(res => res.json()).then(data => setOceanData(data));
+    fetch(`${BACKEND_API_BASE}/api/v1/ocean/telemetry`)
+      .then(res => res.json())
+      .then(data => setOceanData(data))
+      .catch(err => console.error("Ocean Matrix Link Fault:", err));
   }, []);
 
   // Sync grid simulator with both sliders and GNN targeted threat indices
   useEffect(() => {
-    let url = `http://127.0.0.1:8000/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}`;
+    let url = `${BACKEND_API_BASE}/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}`;
     if (activeThreatIndex !== null) {
       url += `&threat_index=${activeThreatIndex}`;
     }
@@ -37,11 +44,16 @@ export default function App() {
       .then(data => {
         setGridData(data);
         setActiveOutputKw(data.calculated_der_output_kw);
-      });
+      })
+      .catch(err => console.error("GNN Simulation Matrix Fault:", err));
   }, [windSpeed, activeThreatIndex]);
 
+  // Sync Coastal Inundation Model Layer Bounds
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/api/v1/hazard/inundation?slr_meters=${slrMeters}`).then(res => res.json()).then(data => setFloodGeoJson(data));
+    fetch(`${BACKEND_API_BASE}/api/v1/hazard/inundation?slr_meters=${slrMeters}`)
+      .then(res => res.json())
+      .then(data => setFloodGeoJson(data))
+      .catch(err => console.error("Inundation Vector Layer Fault:", err));
   }, [slrMeters]);
 
   const triggerResilientOrchestrationStory = () => {
@@ -62,7 +74,7 @@ export default function App() {
       formData.append("image", selectedImage);
     }
 
-    fetch('http://127.0.0.1:8000/api/v1/voice/report', {
+    fetch(`${BACKEND_API_BASE}/api/v1/voice/report`, {
       method: 'POST',
       body: formData
     })
@@ -75,16 +87,18 @@ export default function App() {
       setLoadingPipeline(false);
       executeVoiceBroadcast(`Tactical triage completed. Hazard type detected: ${data.triage_incident_profile}`);
     })
-    .catch(() => setLoadingPipeline(false));
+    .catch((err) => {
+      console.error("Multi-Modal Pipeline Engine Failure:", err);
+      setLoadingPipeline(false);
+    });
   };
 
   const executeVoiceBroadcast = (text) => {
     if (airGapped) {
-      // Local air gapped browser voice synthesizer
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
       return;
     }
-    fetch('http://127.0.0.1:8000/api/v1/voice/broadcast', {
+    fetch(`${BACKEND_API_BASE}/api/v1/voice/broadcast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text })
@@ -95,6 +109,10 @@ export default function App() {
       } else {
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
       }
+    })
+    .catch(() => {
+      // Local fallback in case network congestion drops ElevenLabs latency streams
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
     });
   };
 
@@ -106,7 +124,6 @@ export default function App() {
           <h1 style={{ fontSize: '14px', margin: 0, fontWeight: 800 }}>AURA // MULTI-MODAL SELF-HEALING ENGINE</h1>
         </div>
 
-        {/* Air-Gapped Mode Switch */}
         <button 
           onClick={() => setAirGapped(!airGapped)}
           style={{
@@ -120,7 +137,6 @@ export default function App() {
       </header>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'row' }}>
-        {/* Map Canvas */}
         <div style={{ flex: 1, position: 'relative', minHeight: '400px' }}>
           <Map {...viewState} onMove={evt => setViewState(evt.viewState)} mapStyle="mapbox://styles/mapbox/dark-v11" mapboxAccessToken={MAPBOX_TOKEN}>
             {floodGeoJson && <Source id="flood" type="geojson" data={floodGeoJson}><Layer type="fill" paint={{ 'fill-color': '#ef4444', 'fill-opacity': 0.35 }} /></Source>}
@@ -140,20 +156,17 @@ export default function App() {
           </Map>
         </div>
 
-        {/* Sidebar Controls Panel */}
         <div style={{ width: '400px', padding: '20px', backgroundColor: '#0f172a', borderLeft: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '15px', overflowY: 'auto' }}>
           
           <button onClick={triggerResilientOrchestrationStory} style={{ width: '100%', backgroundColor: '#ef4444', border: 'none', padding: '12px', borderRadius: '6px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             <ShieldAlert size={18} /> Simulate Hurricane Landing
           </button>
 
-          {/* GNN Generation Matrices Panel */}
           <div style={{ backgroundColor: '#0b2545', padding: '14px', borderRadius: '8px', border: '1px solid #134074' }}>
             <h3 style={{ margin: '0 0 4px 0', fontSize: '11px', color: '#64dfdf' }}>⚡ RESILIENT GENERATION MATRICES</h3>
             <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#38bdf8' }}>{activeOutputKw} kW Generated</div>
           </div>
 
-          {/* Sliders */}
           <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontSize: '11px', color: '#94a3b8' }}><Wind size={12} /> Kinetic Wind Feed: <strong>{windSpeed} MPH</strong></label>
             <input type="range" min="15" max="100" value={windSpeed} onChange={(e) => setWindSpeed(Number(e.target.value))} />
@@ -162,7 +175,6 @@ export default function App() {
             <input type="range" min="0.0" max="3.0" step="0.5" value={slrMeters} onChange={(e) => setSlrMeters(parseFloat(e.target.value))} />
           </div>
 
-          {/* AI Telemetry Ingestion Input Form */}
           <div style={{ backgroundColor: '#111827', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b' }}>
             <h4 style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#38bdf8' }}>🛰️ INCIDENT DATA INGESTION MATRIX</h4>
             <form onSubmit={handleIncidentPipelineSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -181,7 +193,6 @@ export default function App() {
             </form>
           </div>
 
-          {/*AI Playbook Results Terminal Display */}
           {playbookResult && (
             <div style={{ background: '#022329', padding: '14px', borderRadius: '8px', border: '1px solid #004b49' }}>
               <h4 style={{ margin: '0 0 6px 0', fontSize: '11px', color: '#00ffcc' }}>📋 GENERATED TACTICAL RESCUE PLAYBOOK</h4>
@@ -189,12 +200,10 @@ export default function App() {
               <div style={{ fontSize: '10px', color: '#829ab1' }}>
                 <div><strong>Triage Analysis:</strong> {playbookResult.triage_incident_profile}</div>
                 <div><strong>Visual Check:</strong> {playbookResult.visual_verification}</div>
-                <div><strong>Execution Fabric:</strong> {playbookResult.system_execution_profile}</div>
               </div>
             </div>
           )}
 
-          {/* Microgrid Routing Logs Displaying GNN Output Status */}
           <div style={{ background: '#111827', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b', flex: 1, overflowY: 'auto' }}>
             <h4 style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}><HardHat size={12} /> MICROGRID TOPO STABILITY MATRIX LOGS</h4>
             <div style={{ fontSize: '11px', lineHeight: '1.6' }}>
