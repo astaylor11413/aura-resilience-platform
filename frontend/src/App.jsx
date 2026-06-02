@@ -346,7 +346,7 @@ export default function App() {
         </div>
 
         {/* CENTER COLUMN PLACEHOLDER */}
-        <div className="hidden md:block md:col-span-6 md:row-span-5" >
+        <div className="hidden md:block md:col-span-6 md:row-span-5 pointer-events-auto" >
           <HudPanel title="Logistics Transcriber">
             <textarea
               value={reportText}
