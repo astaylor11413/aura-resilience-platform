@@ -41,7 +41,7 @@ const marinePolygonLayer = {
   id: 'marine-anomaly-polygon-layer',
   type: 'fill',
   paint: {
-    'fill-color': '#f59e0b',       // amber-500
+    'fill-color': '#f59e0b',        // amber-500
     'fill-opacity': 0.15,
     'fill-outline-color': '#fbbf24' // amber-400
   }
@@ -82,7 +82,6 @@ const routingLayer = {
     'line-cap': 'round'
   },
   paint: {
-    // Dynamic color based on urgency
     'line-color': [
       'match',
       ['get', 'urgency'],
@@ -90,7 +89,6 @@ const routingLayer = {
       'HIGH', '#f97316',    // Orange for secondary flow
       '#8b5cf6'             // Purple for baseline support
     ],
-    // Width represents throughput volume
     'line-width': [
       'match',
       ['get', 'urgency'],
@@ -98,13 +96,12 @@ const routingLayer = {
       'HIGH', 4,
       2
     ],
-    // Animated dash effect for movement
     'line-dasharray': [2, 1.5],
   }
 };
 
 const getLogisticsBlurb = (facilityName, urgency) => {
-  const name = facilityName.toLowerCase();
+  const name = String(facilityName || '').toLowerCase();
   const isKitchen = name.includes("kitchen");
   const isHub = name.includes("hub");
 
@@ -117,7 +114,6 @@ const getLogisticsBlurb = (facilityName, urgency) => {
       text: "Communication and coordination node compromised. Islanded communities are losing situational oversight.",
       action: "DEPLOY: Satellite comms relay unit."
     };
-    // Default to Relief Station logic
     return {
       text: "Medical/Supply relief station capacity reached. Critical backlog in emergency aid throughput.",
       action: "DEPLOY: Secondary triage field unit."
@@ -170,7 +166,6 @@ export default function App() {
 
   const triggerResilientOrchestrationStory = () => {
     setters.setIsSimulating(true);
-
     setters.setWindSpeed(78);
     setters.setSlrMeters(2.0);
     setters.setHurricaneIntensity(5);
@@ -178,9 +173,8 @@ export default function App() {
     const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
-    // Updated to use local engine if airGapped
-    const marineSource = state.airGapped ? runLocalMarineTelemetry() : data.marineAnomalies;
-    const criticalNode = marineSource.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL"));
+    const marineSource = state.airGapped ? runLocalMarineTelemetry() : (data?.marineAnomalies || []);
+    const criticalNode = Array.isArray(marineSource) ? marineSource.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL")) : null;
     if (criticalNode?.geometry?.coordinates) {
       const [lng, lat] = criticalNode.geometry.coordinates;
       mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, essential: true });
@@ -190,12 +184,11 @@ export default function App() {
   const handleProcessTransmission = async () => {
     if (!reportText.trim()) return;
     setIsProcessing(true);
-    // AIR GAPPED PATH
+    
     if (state.airGapped) {
       try {
         const result = await runLocalTriage(reportText, state);
         alert(`${result.actionable_tactical_playbook}`);
-        // Fixed: Use correct property reference
         setters.setActiveThreatIndex(result.matched_node_threat_index);
       } catch (err) {
         console.error("Edge Engine Error:", err);
@@ -204,7 +197,7 @@ export default function App() {
       }
       return;
     }
-    // CLOUD PATH
+
     try {
       const formData = new FormData();
       formData.append('text', reportText);
@@ -220,9 +213,6 @@ export default function App() {
         if (resData.matched_node_threat_index !== null) {
           setters.setActiveThreatIndex(resData.matched_node_threat_index);
         }
-        if (data.triageReport !== undefined) {
-          data.triageReport = resData;
-        }
         alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
       }
     } catch (err) {
@@ -233,11 +223,43 @@ export default function App() {
   };
 
   // Determine Data Sources based on Mode
-  const activeInundation = state.airGapped ? runLocalInundation(state.slrMeters) : data.inundationGeoJson;
-  // Protective check for local grid simulation
-  const gridResult = state.airGapped ? runLocalGridSimulation(state.windSpeed) : { assets: geoJson.compiledSubstationGeoJson, grid_state: 'NOMINAL' };
-  const activeGrid = gridResult?.assets || [];
-  const activeMarine = state.airGapped ? runLocalMarineTelemetry() : geoJson.compiledMarineGeoJson;
+  const activeInundation = state.airGapped ? runLocalInundation(state.slrMeters) : (data?.inundationGeoJson || { type: 'FeatureCollection', features: [] });
+  
+  // Normalized Grid Resolution Mapping
+  let processedSubstationFeatures = [];
+  let calculatedGridState = 'NOMINAL';
+
+  if (state.airGapped) {
+    const localGridResult = runLocalGridSimulation(state.windSpeed);
+    calculatedGridState = localGridResult?.grid_state || 'NOMINAL';
+    const localAssets = localGridResult?.assets || [];
+    processedSubstationFeatures = localAssets.map(a => ({
+      type: "Feature",
+      properties: { id: a.id, name: a.name, status: a.status?.toLowerCase().includes('critical') ? 'critical' : 'nominal', power_routing: a.power_routing },
+      geometry: { type: "Point", coordinates: a.coordinates }
+    }));
+  } else {
+    calculatedGridState = state.gridState || 'NOMINAL';
+    const cloudGeoJson = geoJson?.compiledSubstationGeoJson || { type: 'FeatureCollection', features: [] };
+    const rawAssetsList = data?.gridAssets || [];
+    
+    processedSubstationFeatures = (cloudGeoJson.features || []).map(f => {
+      const liveAssetMatch = rawAssetsList.find(a => a.id === f.properties?.id);
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          power_routing: liveAssetMatch ? liveAssetMatch.power_routing : 'MAIN_LINE_FEED'
+        }
+      };
+    });
+  }
+
+  const activeMarineFeatures = state.airGapped 
+    ? runLocalMarineTelemetry() 
+    : (geoJson?.compiledMarineGeoJson?.features || []);
+
+  const activeRoutingGeoJson = data?.routingGeoJson || { type: 'FeatureCollection', features: [] };
 
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
@@ -258,10 +280,9 @@ export default function App() {
           </Source>
 
           {/* Conditional Mutual Aid Path Vectors */}
-          {showRoutingLayer && (
-            <Source id="routing-data" type="geojson" data={data.routingGeoJson}>
+          {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
+            <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
               <Layer {...routingLayer} />
-              {/* LABEL LAYER - Shows the urgency label directly on the map */}
               <Layer
                 id="routing-labels"
                 type="symbol"
@@ -279,7 +300,7 @@ export default function App() {
                 type="symbol"
                 layout={{
                   'symbol-placement': 'line',
-                  'symbol-spacing': 50, // Distance between arrows
+                  'symbol-spacing': 50,
                   'text-field': '▶',
                   'text-size': 12,
                   'text-keep-upright': true
@@ -292,15 +313,15 @@ export default function App() {
           )}
 
           {/* Conditional Oceanographic Watchdog Telemetry Layer */}
-          {showMarineLayer && activeMarine?.length > 0 && (
-            <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarine }}>
+          {showMarineLayer && activeMarineFeatures.length > 0 && (
+            <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
               <Layer {...marinePolygonLayer} />
               <Layer {...marineGlowLayer} />
             </Source>
           )}
 
           {/* Physics-Informed Substation Points */}
-          <Source id="substation-data" type="geojson" data={{ type: "FeatureCollection", features: activeGrid.map(a => ({ type: "Feature", properties: { status: a.status }, geometry: { type: "Point", coordinates: a.coordinates } })) }}>
+          <Source id="substation-data" type="geojson" data={{ type: "FeatureCollection", features: processedSubstationFeatures }}>
             <Layer {...substationLayer} />
           </Source>
         </Map>
@@ -312,7 +333,7 @@ export default function App() {
         {/* HEADER BAR */}
         <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
           <div className="flex items-center gap-3">
-            <div className={`h-3 w-3 rounded-full ${gridResult.grid_state === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
+            <div className={`h-3 w-3 rounded-full ${calculatedGridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
             <div className="flex items-center gap-2">
               <div className={`h-2 w-2 rounded-full ${state.airGapped ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
@@ -338,14 +359,14 @@ export default function App() {
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={state.airGapped}
+                checked={!!state.airGapped}
                 onChange={(e) => setters.setAirGapped(e.target.checked)}
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
               <span>AIR_GAPPED_MODE</span>
             </label>
             <div>
-              STATE: <span className={gridResult.grid_state === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{gridResult.grid_state}</span>
+              STATE: <span className={calculatedGridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{calculatedGridState}</span>
             </div>
           </div>
         </header>
@@ -355,7 +376,7 @@ export default function App() {
           <div>
             <button
               onClick={triggerResilientOrchestrationStory}
-              className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+              className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mb-2"
             >
               <ShieldAlert size={18} /> {state.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
             </button>
@@ -365,11 +386,12 @@ export default function App() {
                   setters.resetAuraState();
                 }
               }}
-              className="bg-rose-900/30 hover:bg-rose-900/60 text-rose-500 text-[10px] px-3 py-1.5 rounded border border-rose-900/50 transition-colors"
+              className="w-full bg-rose-900/30 hover:bg-rose-900/60 text-rose-500 text-[10px] px-3 py-1.5 rounded border border-rose-900/50 transition-colors text-center"
             >
               System Reset
             </button>
           </div>
+          
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
@@ -391,8 +413,8 @@ export default function App() {
 
           <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
-              {(state.airGapped ? runLocalMarineTelemetry() : data.marineAnomalies).map((m, i) => {
-                const locName = m.properties?.location_name || '';
+              {activeMarineFeatures.map((m, i) => {
+                const locName = m.properties?.location_name || 'Anomalous Region';
                 const tempAnomaly = m.properties?.surface_temp_anomaly_celsius || 0;
                 const geomCoords = m.geometry?.coordinates;
 
@@ -419,7 +441,7 @@ export default function App() {
                     <summary className="text-[10px] font-mono list-none flex justify-between items-center select-none">
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
-                          {locName || 'Anomalous Subsystem'}
+                          {locName}
                         </span>
                         <span className="text-[9px] text-slate-500 font-sans">
                           Watchdog: {m.properties?.ai_watchdog_status || 'MONITOR'}
@@ -448,46 +470,54 @@ export default function App() {
           </HudPanel>
         </div>
 
-        {/* CENTER */}
+        {/* CENTER VISUAL SPACE ACCOMMODATION */}
         <div className="hidden md:block md:col-span-6" />
 
         {/* RIGHT COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
           <HudPanel title="GNN Grid Analyzer">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-              {activeGrid.map(asset => (
-                <details
-                  key={asset.id}
-                  className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
-                  onToggle={(e) => {
-                    if (e.currentTarget.open && asset.coordinates) {
-                      handlePanToTarget(asset.coordinates[0], asset.coordinates[1]);
-                    }
-                  }}
-                >
-                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
-                    <span>{asset.name}</span>
-                    <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
-                  </summary>
-                  <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
-                    <div>Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{asset.status}</span></div>
-                    <div className="text-slate-500 text-[9px]">Routing: {asset.power_routing}</div>
-                  </div>
-                </details>
-              ))}
+              {processedSubstationFeatures.map(feat => {
+                const props = feat.properties || {};
+                const coords = feat.geometry?.coordinates;
+                return (
+                  <details
+                    key={props.id}
+                    className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                    onToggle={(e) => {
+                      if (e.currentTarget.open && coords) {
+                        handlePanToTarget(coords[0], coords[1]);
+                      }
+                    }}
+                  >
+                    <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
+                      <span>{props.name}</span>
+                      <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
+                    </summary>
+                    <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
+                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.status?.toUpperCase()}</span></div>
+                      <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
+                    </div>
+                  </details>
+                );
+              })}
             </div>
           </HudPanel>
 
           <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
-              {data.routingGeoJson.features.map((route, i) => {
-                const blurb = getLogisticsBlurb(route.properties.origin_kitchen, route.properties.urgency);
+              {(activeRoutingGeoJson.features || []).map((route, i) => {
+                const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
+                const destShelter = route.properties?.destination_shelter || 'Unknown Shelter';
+                const urgency = route.properties?.urgency || 'LOW';
+                const blurb = getLogisticsBlurb(originKitchen, urgency);
+                
                 return (
                   <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
+                      <span className="text-emerald-400 font-bold">{originKitchen}</span>
                       <span className="text-slate-500">→</span>
-                      <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
+                      <span className="text-purple-400 font-bold">{destShelter}</span>
                     </div>
                     <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
                     <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
@@ -500,14 +530,14 @@ export default function App() {
           </HudPanel>
         </div>
 
-        {/* TRANSCRIBER */}
+        {/* TRANSCRIBER PANEL */}
         <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
           <HudPanel title="Logistics Transcriber">
             <div className="flex gap-2">
               <textarea
                 value={reportText}
                 onChange={(e) => setReportText(e.target.value)}
-                placeholder={modelReady ? "Enter incident report (e.g., 'Palisadoes line is underwater down south')..." : "Loading AI model..."}
+                placeholder={modelReady || !state.airGapped ? "Enter incident report (e.g., 'Palisadoes line is underwater down south')..." : "Loading AI model..."}
                 disabled={!modelReady && state.airGapped}
                 className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
               />
