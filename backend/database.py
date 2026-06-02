@@ -56,10 +56,11 @@ mock_ocean_anomalies = [
         "plastic_density": 450.2
     },
     {  
-        "name": "New York Bight Microplastic Accumulation Zone", 
-        "coordinates": [-73.90, 40.65], 
-        "temp_anomaly": 1.4, 
-        "plastic_density": 890.7
+        # RESTORED TO CARIBBEAN BOUNDS: Placed in the gyre convergence south of Pedro Cays
+        "name": "Pedro Bank Pelagic Plastic & Sargassum Gyre", 
+        "coordinates": [-77.50, 17.20], 
+        "temp_anomaly": 2.6, 
+        "plastic_density": 912.4  # High density triggers the Watchdog alert logic
     },
     {
         "name": "Jamaica South-Shelf Algal Stress Hotspot", 
