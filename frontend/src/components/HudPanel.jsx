@@ -1,17 +1,19 @@
 import React from 'react';
 
-export const HudPanel = ({ title, color = "cyan", aiBadge = false, children }) => (
-  <div className="p-4 rounded-xl bg-slate-950/70 backdrop-blur-md border border-white/10 shadow-xl flex flex-col gap-3 pointer-events-auto transition-all">
-    <div className="flex justify-between items-center border-b border-white/5 pb-2 mb-1">
-      <h2 className={`text-[10px] font-bold uppercase tracking-widest text-${color}-400`}>{title}</h2>
-      {aiBadge && (
-        <span className="text-[8px] uppercase font-mono px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded">
-          AI-Active
+export function HudPanel({ title, children }) {
+  return (
+    <div className="bg-slate-900/75 backdrop-blur-md border border-white/5 rounded-xl p-4 flex flex-col gap-3 shadow-2xl">
+      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+        <h2 className="text-[10px] font-bold tracking-widest text-slate-400 uppercase font-mono">
+          {title}
+        </h2>
+        <span className="text-[8px] font-mono bg-white/5 px-1.5 py-0.5 rounded text-slate-500 border border-white/5">
+          AI_ENGINE_ACTIVE
         </span>
-      )}
+      </div>
+      <div className="flex flex-col gap-2">
+        {children}
+      </div>
     </div>
-    <div className="flex flex-col gap-3">
-      {children}
-    </div>
-  </div>
-);
+  );
+}
