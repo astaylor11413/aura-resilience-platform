@@ -237,7 +237,13 @@ export default function App() {
     const localAssets = localGridResult?.assets || [];
     processedSubstationFeatures = localAssets.map(a => ({
       type: "Feature",
-      properties: { id: a.id, name: a.name, status: a.status?.toLowerCase().includes('critical') ? 'critical' : 'nominal', power_routing: a.power_routing },
+      properties: {
+        id: a.id,
+        name: a.name,
+        rawStatus: a.status,
+        status: a.status?.toLowerCase().includes('critical') ? 'critical' : 'nominal',
+        power_routing: a.power_routing
+      },
       geometry: { type: "Point", coordinates: a.coordinates }
     }));
   } else {
@@ -273,7 +279,11 @@ export default function App() {
           ref={mapRef}
           onMove={evt => setViewState(evt.viewState)}
           mapboxAccessToken={MAPBOX_TOKEN}
-          mapStyle="mapbox://styles/mapbox/dark-v11"
+          mapStyle={
+            state.isSimulating
+              ? "mapbox://styles/mapbox/satellite-streets-v12" // Swaps to high-detail crisis terrain
+              : "mapbox://styles/mapbox/dark-v11"              // Default monitoring state
+          }
           style={{ width: '100%', height: '100%' }}
         >
           {/* Inundation Vectors Polygons */}
@@ -497,7 +507,7 @@ export default function App() {
                       <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
                     </summary>
                     <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
-                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.status?.toUpperCase()}</span></div>
+                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
                       <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
                     </div>
                   </details>
