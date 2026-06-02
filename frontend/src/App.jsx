@@ -113,36 +113,35 @@ export default function App() {
   const { state, setters, data, geoJson } = useAuraData();
   const [reportText, setReportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const mapRef = useRef(null); // Reference hook to interface with imperative Mapbox GL controls
+  
+  const [showMarineLayer, setShowMarineLayer] = useState(false);
+  const [showRoutingLayer, setShowRoutingLayer] = useState(false);
+  
+  const mapRef = useRef(null); 
 
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
 
-  // Reusable utility function to handle vector camera pans
   const handlePanToTarget = (lng, lat) => {
     if (!lng || !lat) return;
     mapRef.current?.flyTo({
       center: [lng, lat],
       zoom: 12.5,
       essential: true,
-      duration: 2000 // Smooth panning duration in milliseconds
+      duration: 2000 
     });
   };
   const triggerResilientOrchestrationStory = () => {
-    // 1. Trigger visual simulation state
     setters.setIsSimulating(true);
 
-    // 2. Adjust environmental variables to storm-level
     setters.setWindSpeed(78);
     setters.setSlrMeters(2.0);
     setters.setHurricaneIntensity(5);
 
-    // 3. Audio/Broadcast Logic
     const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
-    // 4. (Optional) Force the map to the most critical anomaly node
     const criticalNode = data.marineAnomalies.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL"));
     if (criticalNode?.geometry?.coordinates) {
       const [lng, lat] = criticalNode.geometry.coordinates;
@@ -187,7 +186,7 @@ export default function App() {
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         <Map
           {...viewState}
-          ref={mapRef} // Capture current map element interface context
+          ref={mapRef} 
           onMove={evt => setViewState(evt.viewState)}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/dark-v11"
@@ -198,13 +197,15 @@ export default function App() {
             <Layer {...inundationLayer} />
           </Source>
 
-          {/* Mutual Aid Path Vectors LineStrings */}
-          <Source id="routing-data" type="geojson" data={data.routingGeoJson}>
-            <Layer {...routingLayer} />
-          </Source>
+          {/* Conditional Mutual Aid Path Vectors */}
+          {showRoutingLayer && (
+            <Source id="routing-data" type="geojson" data={data.routingGeoJson}>
+              <Layer {...routingLayer} />
+            </Source>
+          )}
 
-          {/* RESTORED OCEANOGRAPHIC WATCHDOG TELEMETRY LAYER */}
-          {geoJson.compiledMarineGeoJson?.features?.length > 0 && (
+          {/* Conditional Oceanographic Watchdog Telemetry Layer */}
+          {showMarineLayer && geoJson.compiledMarineGeoJson?.features?.length > 0 && (
             <Source id="marine-data" type="geojson" data={geoJson.compiledMarineGeoJson}>
               <Layer {...marinePolygonLayer} />
               <Layer {...marineGlowLayer} />
@@ -254,18 +255,17 @@ export default function App() {
               STATE: <span className={state.gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{state.gridState}</span>
             </div>
           </div>
-
         </header>
 
-        {/* LEFT COLUMN: Controls & Logistics */}
+        {/* LEFT COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-          {/* RESTORED HURRICANE SIMULATOR BUTTON */}
           <button
             onClick={triggerResilientOrchestrationStory}
             className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
           >
             <ShieldAlert size={18} /> {state.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
           </button>
+          
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
@@ -284,8 +284,8 @@ export default function App() {
               </button>
             )}
           </HudPanel>
-          {/* OCEANOGRAPHIC WATCHDOG WITH MAP INTERACTION */}
-          <HudPanel title="Oceanographic Watchdog">
+          
+          <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {data.marineAnomalies.map((m, i) => {
                 const locName = m.properties?.location_name || '';
@@ -307,7 +307,6 @@ export default function App() {
                     key={i}
                     className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                     onToggle={(e) => {
-                      // Trigger dynamic alignment coordinate camera move if target details expand
                       if (e.currentTarget.open && geomCoords) {
                         handlePanToTarget(geomCoords[0], geomCoords[1]);
                       }
@@ -345,13 +344,11 @@ export default function App() {
           </HudPanel>
         </div>
 
-        {/* CENTER COLUMN PLACEHOLDER */}
+        {/* CENTER */}
         <div className="hidden md:block md:col-span-6" />
 
-        {/* RIGHT COLUMN: Telemetry & Analyzers */}
+        {/* RIGHT COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-
-          {/* GNN GRID ANALYZER WITH MAP INTERACTION */}
           <HudPanel title="GNN Grid Analyzer">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.gridAssets.map(asset => (
@@ -359,7 +356,6 @@ export default function App() {
                   key={asset.id}
                   className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                   onToggle={(e) => {
-                    // Only trigger flight matrix vectors when the panel state opens
                     if (e.currentTarget.open && asset.coordinates) {
                       handlePanToTarget(asset.coordinates[0], asset.coordinates[1]);
                     }
@@ -377,7 +373,8 @@ export default function App() {
               ))}
             </div>
           </HudPanel>
-          <HudPanel title="Logistics & Mutual Aid">
+          
+          <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {data.routingGeoJson.features.map((route, i) => {
                 const blurb = getLogisticsBlurb(route.properties.origin_kitchen, route.properties.urgency);
@@ -399,7 +396,7 @@ export default function App() {
           </HudPanel>
         </div>
 
-        {/* LOGISTICS TRANSCRIBER */}
+        {/* TRANSCRIBER */}
         <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
           <HudPanel title="Logistics Transcriber">
             <div className="flex gap-2">
