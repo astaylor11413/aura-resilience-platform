@@ -195,6 +195,15 @@ export default function App() {
 
         {/* LEFT COLUMN: Controls & Logistics */}
         <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
+          {/* HURRICANE SIMULATOR COMPONENT */}
+          <HudPanel title="Hurricane Simulator">
+            <HurricaneSimulator
+              isActive={state.isSimulating}
+              onToggle={() => setters.setIsSimulating(!state.isSimulating)}
+              intensity={state.hurricaneIntensity}
+              onIntensityChange={(val) => setters.setHurricaneIntensity(val)}
+            />
+          </HudPanel>
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
@@ -236,13 +245,13 @@ export default function App() {
 
         {/* RIGHT COLUMN: Telemetry & Analyzers */}
         <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
-          
+
           {/* GNN GRID ANALYZER WITH MAP INTERACTION */}
           <HudPanel title="GNN Grid Analyzer">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.gridAssets.map(asset => (
-                <details 
-                  key={asset.id} 
+                <details
+                  key={asset.id}
                   className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                   onToggle={(e) => {
                     // Only trigger flight matrix vectors when the panel state opens
@@ -283,8 +292,8 @@ export default function App() {
                 }
 
                 return (
-                  <details 
-                    key={i} 
+                  <details
+                    key={i}
                     className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                     onToggle={(e) => {
                       // Trigger dynamic alignment coordinate camera move if target details expand
