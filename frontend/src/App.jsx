@@ -345,27 +345,6 @@ export default function App() {
           </HudPanel>
         </div>
 
-        {/* CENTER COLUMN PLACEHOLDER */}
-        <div className="absolute bottom-4 left-4 right-4 md:left-[27%] md:right-[27%] z-40 pointer-events-auto">
-          <HudPanel title="Logistics Transcriber">
-            <div className="flex gap-2">
-              <textarea
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
-                placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
-                className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
-              />
-              <button
-                onClick={handleProcessTransmission}
-                disabled={isProcessing}
-                className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
-              >
-                {isProcessing ? 'Processing...' : 'Process'}
-              </button>
-            </div>
-          </HudPanel>
-        </div>
-
         {/* RIGHT COLUMN: Telemetry & Analyzers */}
         <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
 
@@ -418,6 +397,26 @@ export default function App() {
         </div>
 
       </div>
+      {/* CENTER COLUMN PLACEHOLDER */}
+        <div className="absolute bottom-4 left-4 right-4 md:left-[27%] md:right-[27%] z-40 pointer-events-auto">
+          <HudPanel title="Logistics Transcriber">
+            <div className="flex gap-2">
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
+                className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+              />
+              <button
+                onClick={handleProcessTransmission}
+                disabled={isProcessing}
+                className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
+              >
+                {isProcessing ? 'Processing...' : 'Process'}
+              </button>
+            </div>
+          </HudPanel>
+        </div>
     </div>
   );
 }
