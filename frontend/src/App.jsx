@@ -195,15 +195,13 @@ export default function App() {
 
         {/* LEFT COLUMN: Controls & Logistics */}
         <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
-          {/* HURRICANE SIMULATOR COMPONENT */}
-          <HudPanel title="Hurricane Simulator">
-            <HurricaneSimulator
-              isActive={state.isSimulating}
-              onToggle={() => setters.setIsSimulating(!state.isSimulating)}
-              intensity={state.hurricaneIntensity}
-              onIntensityChange={(val) => setters.setHurricaneIntensity(val)}
-            />
-          </HudPanel>
+          {/* RESTORED HURRICANE SIMULATOR BUTTON */}
+          <button
+            onClick={triggerResilientOrchestrationStory}
+            className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+          >
+            <ShieldAlert size={18} /> Simulate Hurricane Impact
+          </button>
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
