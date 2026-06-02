@@ -6,7 +6,11 @@ import { HudPanel } from './components/HudPanel';
 import { ShieldAlert, Wind, Activity } from 'lucide-react';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
-
+const HOME_COORDINATES = {
+  longitude: -76.78,
+  latitude: 17.95,
+  zoom: 11
+};
 // --- MAP STYLE LAYERS FOR BACKEND DATA ---
 const substationLayer = {
   id: 'substations-layer',
@@ -224,6 +228,19 @@ export default function App() {
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
+            <button
+              onClick={() => {
+                mapRef.current?.flyTo({
+                  center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude],
+                  zoom: HOME_COORDINATES.zoom,
+                  essential: true,
+                  duration: 1500
+                });
+              }}
+              className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors"
+            >
+              RESET_VIEW
+            </button>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -235,8 +252,9 @@ export default function App() {
             </label>
             <div>
               STATE: <span className={state.gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{state.gridState}</span>
-            </div>
+            </div>            
           </div>
+
         </header>
 
         {/* LEFT COLUMN: Controls & Logistics */}
