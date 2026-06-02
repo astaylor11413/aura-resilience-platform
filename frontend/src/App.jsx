@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Map, { Source, Layer } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuraData } from './hooks/useAuraData';
@@ -38,7 +38,6 @@ const marineGlowLayer = {
   id: 'marine-anomaly-glow-layer',
   type: 'circle',
   paint: {
-    // Dynamic exponential zoom interpolation creating the large visual sweep
     'circle-radius': [
       'interpolate', ['exponential', 2], ['zoom'],
       10, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 105, 60],
@@ -46,7 +45,7 @@ const marineGlowLayer = {
       16, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 420, 240]
     ],
     'circle-color': '#f59e0b',
-    'circle-opacity': 0.08, // Subtle transparency rule
+    'circle-opacity': 0.08,
     'circle-stroke-width': 1.5,
     'circle-stroke-color': '#fbbf24',
     'circle-stroke-opacity': 0.4
@@ -72,7 +71,7 @@ const routingLayer = {
       ['get', 'urgency'],
       'CRITICAL', '#ef4444',
       'HIGH', '#f97316',
-      '#a855f7' // purple-500 default mutual aid
+      '#a855f7'
     ],
     'line-width': 3,
     'line-dasharray': [2, 2]
@@ -83,10 +82,22 @@ export default function App() {
   const { state, setters, data, geoJson } = useAuraData();
   const [reportText, setReportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const mapRef = useRef(null); // Reference hook to interface with imperative Mapbox GL controls
 
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
+
+  // Reusable utility function to handle vector camera pans
+  const handlePanToTarget = (lng, lat) => {
+    if (!lng || !lat) return;
+    mapRef.current?.flyTo({
+      center: [lng, lat],
+      zoom: 12.5,
+      essential: true,
+      duration: 2000 // Smooth panning duration in milliseconds
+    });
+  };
 
   const handleProcessTransmission = async () => {
     if (!reportText.trim()) return;
@@ -104,11 +115,9 @@ export default function App() {
 
       const resData = await response.json();
       if (resData.status === 'success') {
-        // Feed the threat matrix match down into the GNN engine state triggers
         if (resData.matched_node_threat_index !== null) {
           setters.setActiveThreatIndex(resData.matched_node_threat_index);
         }
-        // Update local hook context data array if matching key is registered
         if (data.triageReport !== undefined) {
           data.triageReport = resData;
         }
@@ -128,6 +137,7 @@ export default function App() {
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         <Map
           {...viewState}
+          ref={mapRef} // Capture current map element interface context
           onMove={evt => setViewState(evt.viewState)}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/dark-v11"
@@ -146,10 +156,7 @@ export default function App() {
           {/* RESTORED OCEANOGRAPHIC WATCHDOG TELEMETRY LAYER */}
           {geoJson.compiledMarineGeoJson?.features?.length > 0 && (
             <Source id="marine-data" type="geojson" data={geoJson.compiledMarineGeoJson}>
-              {/* Base Polygon/Point Fill */}
               <Layer {...marinePolygonLayer} />
-
-              {/* Large Translucent Hazard Glow Layer */}
               <Layer {...marineGlowLayer} />
             </Source>
           )}
@@ -229,10 +236,21 @@ export default function App() {
 
         {/* RIGHT COLUMN: Telemetry & Analyzers */}
         <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
+          
+          {/* GNN GRID ANALYZER WITH MAP INTERACTION */}
           <HudPanel title="GNN Grid Analyzer">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.gridAssets.map(asset => (
-                <details key={asset.id} className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group">
+                <details 
+                  key={asset.id} 
+                  className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                  onToggle={(e) => {
+                    // Only trigger flight matrix vectors when the panel state opens
+                    if (e.currentTarget.open && asset.coordinates) {
+                      handlePanToTarget(asset.coordinates[0], asset.coordinates[1]);
+                    }
+                  }}
+                >
                   <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
                     <span>{asset.name}</span>
                     <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
@@ -246,26 +264,35 @@ export default function App() {
             </div>
           </HudPanel>
 
-          {/* DYNAMIC EXPANDABLE OCEANOGRAPHIC WATCHDOG PANEL */}
+          {/* OCEANOGRAPHIC WATCHDOG WITH MAP INTERACTION */}
           <HudPanel title="Oceanographic Watchdog">
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {data.marineAnomalies.map((m, i) => {
                 const locName = m.properties?.location_name || '';
                 const tempAnomaly = m.properties?.surface_temp_anomaly_celsius || 0;
+                const geomCoords = m.geometry?.coordinates;
 
-                // Dynamic impact assessment assignment mapping against active database locations
                 let localImpactBlurb = "Monitoring regional baseline indices. Elevated surface metrics signal early risks of local benthic ecosystem stress.";
 
                 if (locName.includes("Coral Bleaching Cluster A")) {
                   localImpactBlurb = `A +${tempAnomaly}°C spike here accelerates severe coral bleaching across nearshore reefs. For locals, this threatens critical artisanal fishing grounds and degrades the natural storm barriers shielding the Kingston shoreline.`;
                 } else if (locName.includes("Pedro Bank")) {
-                  localImpactBlurb = `This massive +${tempAnomaly}°C anomaly in the pelagic gyre traps heavy sargassum biomass. Drifting fields choke down south-coast harbors, drop marine oxygen values, and disrupt active commercial shipping links.`;
+                  localImpactBlurb = `This massive +${tempAnomaly}°C anomaly in the pelagic gyre traps heavy sargassum biomass. Drifting fields choke down south-coast harbors, drop marine oxygen values, and disrupt active commercial fishing links.`;
                 } else if (locName.includes("Algal Stress Hotspot")) {
                   localImpactBlurb = `Sustained temperatures +${tempAnomaly}°C above historical norms trigger rapid toxic microalgae spikes on the shallow shelf. This risks bioaccumulation issues in shellfish maps and harms beach infrastructure groups.`;
                 }
 
                 return (
-                  <details key={i} className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group">
+                  <details 
+                    key={i} 
+                    className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                    onToggle={(e) => {
+                      // Trigger dynamic alignment coordinate camera move if target details expand
+                      if (e.currentTarget.open && geomCoords) {
+                        handlePanToTarget(geomCoords[0], geomCoords[1]);
+                      }
+                    }}
+                  >
                     <summary className="text-[10px] font-mono list-none flex justify-between items-center select-none">
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
