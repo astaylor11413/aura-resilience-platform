@@ -398,25 +398,28 @@ export default function App() {
             </div>
           </HudPanel>
         </div>
-        
+
       </div>
-      <div>
-            <HudPanel title="Logistics Transcriber">
-              <textarea
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
-                placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
-                className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
-              />
-              <button
-                onClick={handleProcessTransmission}
-                disabled={isProcessing}
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
-              >
-                {isProcessing ? 'Processing ...' : 'Process'}
-              </button>
-            </HudPanel>
+      {/* FIXED BOTTOM ANCHOR -transcribe service*/}
+      <div className="absolute bottom-6 left-4 right-4 md:left-[30%] md:right-[30%] z-[60] pointer-events-auto">
+        <HudPanel title="Logistics Transcriber">
+          <div className="flex gap-2">
+            <textarea
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="Enter incident report..."
+              className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+            />
+            <button
+              onClick={handleProcessTransmission}
+              disabled={isProcessing}
+              className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
+            >
+              {isProcessing ? 'Processing...' : 'Process'}
+            </button>
           </div>
+        </HudPanel>
+      </div>
     </div>
   );
 }
