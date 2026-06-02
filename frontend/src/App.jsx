@@ -252,7 +252,7 @@ export default function App() {
             </label>
             <div>
               STATE: <span className={state.gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{state.gridState}</span>
-            </div>            
+            </div>
           </div>
 
         </header>
@@ -346,21 +346,23 @@ export default function App() {
         </div>
 
         {/* CENTER COLUMN PLACEHOLDER */}
-        <div className="hidden md:block md:col-span-6 md:row-span-5 pointer-events-auto" >
+        <div className="hidden md:block md:col-start-4 md:col-span-6 md:row-start-6 md:row-span-1 pointer-events-auto px-4 pb-4">
           <HudPanel title="Logistics Transcriber">
-            <textarea
-              value={reportText}
-              onChange={(e) => setReportText(e.target.value)}
-              placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
-              className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
-            />
-            <button
-              onClick={handleProcessTransmission}
-              disabled={isProcessing}
-              className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
-            >
-              {isProcessing ? 'Processing Regional Transmission...' : 'Process Transmission'}
-            </button>
+            <div className="flex gap-2">
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Enter incident report..."
+                className="flex-grow h-12 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+              />
+              <button
+                onClick={handleProcessTransmission}
+                disabled={isProcessing}
+                className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-6 rounded font-bold uppercase transition-colors text-white"
+              >
+                {isProcessing ? 'Processing...' : 'Process'}
+              </button>
+            </div>
           </HudPanel>
         </div>
 
