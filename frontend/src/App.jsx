@@ -240,79 +240,6 @@ export default function App() {
               </button>
             )}
           </HudPanel>
-          <HudPanel title="Logistics & Mutual Aid">
-            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
-              {data.routingGeoJson.features.map((route, i) => (
-                <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
-                    <span className="text-slate-500">→</span>
-                    <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
-                  </div>
-                  <div className="text-slate-400 flex justify-between">
-                    <span>Status: </span>
-                    <span className={route.properties.urgency === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-300'}>
-                      {route.properties.urgency}
-                    </span>
-                  </div>
-                  <div className="text-[9px] text-slate-600 mt-1 italic">
-                    Permit: {route.properties.permit_verification}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </HudPanel>
-        </div>
-
-        {/* CENTER COLUMN PLACEHOLDER */}
-        <div className="hidden md:block md:col-span-6 md:row-span-5" >
-          <HudPanel title="Logistics Transcriber">
-            <textarea
-              value={reportText}
-              onChange={(e) => setReportText(e.target.value)}
-              placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
-              className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
-            />
-            <button
-              onClick={handleProcessTransmission}
-              disabled={isProcessing}
-              className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
-            >
-              {isProcessing ? 'Processing Regional Transmission...' : 'Process Transmission'}
-            </button>
-          </HudPanel>
-        </div>
-
-        {/* RIGHT COLUMN: Telemetry & Analyzers */}
-        <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
-
-          {/* GNN GRID ANALYZER WITH MAP INTERACTION */}
-          <HudPanel title="GNN Grid Analyzer">
-            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-              {data.gridAssets.map(asset => (
-                <details
-                  key={asset.id}
-                  className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
-                  onToggle={(e) => {
-                    // Only trigger flight matrix vectors when the panel state opens
-                    if (e.currentTarget.open && asset.coordinates) {
-                      handlePanToTarget(asset.coordinates[0], asset.coordinates[1]);
-                    }
-                  }}
-                >
-                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
-                    <span>{asset.name}</span>
-                    <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
-                  </summary>
-                  <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
-                    <div>Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{asset.status}</span></div>
-                    <div className="text-slate-500 text-[9px]">Routing: {asset.power_routing}</div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          </HudPanel>
-
           {/* OCEANOGRAPHIC WATCHDOG WITH MAP INTERACTION */}
           <HudPanel title="Oceanographic Watchdog">
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
@@ -370,6 +297,78 @@ export default function App() {
                   </details>
                 );
               })}
+            </div>
+          </HudPanel>
+        </div>
+
+        {/* CENTER COLUMN PLACEHOLDER */}
+        <div className="hidden md:block md:col-span-6 md:row-span-5" >
+          <HudPanel title="Logistics Transcriber">
+            <textarea
+              value={reportText}
+              onChange={(e) => setReportText(e.target.value)}
+              placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
+              className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+            />
+            <button
+              onClick={handleProcessTransmission}
+              disabled={isProcessing}
+              className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
+            >
+              {isProcessing ? 'Processing Regional Transmission...' : 'Process Transmission'}
+            </button>
+          </HudPanel>
+        </div>
+
+        {/* RIGHT COLUMN: Telemetry & Analyzers */}
+        <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
+
+          {/* GNN GRID ANALYZER WITH MAP INTERACTION */}
+          <HudPanel title="GNN Grid Analyzer">
+            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+              {data.gridAssets.map(asset => (
+                <details
+                  key={asset.id}
+                  className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                  onToggle={(e) => {
+                    // Only trigger flight matrix vectors when the panel state opens
+                    if (e.currentTarget.open && asset.coordinates) {
+                      handlePanToTarget(asset.coordinates[0], asset.coordinates[1]);
+                    }
+                  }}
+                >
+                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
+                    <span>{asset.name}</span>
+                    <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
+                  </summary>
+                  <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
+                    <div>Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{asset.status}</span></div>
+                    <div className="text-slate-500 text-[9px]">Routing: {asset.power_routing}</div>
+                  </div>
+                </details>
+              ))}
+            </div>
+          </HudPanel>
+          <HudPanel title="Logistics & Mutual Aid">
+            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+              {data.routingGeoJson.features.map((route, i) => (
+                <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
+                    <span className="text-slate-500">→</span>
+                    <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
+                  </div>
+                  <div className="text-slate-400 flex justify-between">
+                    <span>Status: </span>
+                    <span className={route.properties.urgency === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-300'}>
+                      {route.properties.urgency}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-600 mt-1 italic">
+                    Permit: {route.properties.permit_verification}
+                  </div>
+                </div>
+              ))}
             </div>
           </HudPanel>
         </div>
