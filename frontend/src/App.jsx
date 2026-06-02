@@ -78,6 +78,32 @@ const routingLayer = {
     'line-dasharray': [2, 2]
   }
 };
+const getLogisticsBlurb = (facilityName, urgency) => {
+  const name = facilityName.toLowerCase();
+  const isKitchen = name.includes("kitchen");
+  const isHub = name.includes("hub");
+
+  if (urgency === 'CRITICAL') {
+    if (isKitchen) return {
+      text: "Supply chain bottleneck at food preparation site. Immediate risk of caloric deficit in shelter zones.",
+      action: "DEPLOY: Mobile distribution fleet."
+    };
+    if (isHub) return {
+      text: "Communication and coordination node compromised. Islanded communities are losing situational oversight.",
+      action: "DEPLOY: Satellite comms relay unit."
+    };
+    // Default to Relief Station logic
+    return {
+      text: "Medical/Supply relief station capacity reached. Critical backlog in emergency aid throughput.",
+      action: "DEPLOY: Secondary triage field unit."
+    };
+  }
+
+  return {
+    text: "Operational status nominal. Maintaining flow of essential resources to designated zones.",
+    action: "STATUS: Steady state operations."
+  };
+};
 
 export default function App() {
   const { state, setters, data, geoJson } = useAuraData();
@@ -351,24 +377,22 @@ export default function App() {
           </HudPanel>
           <HudPanel title="Logistics & Mutual Aid">
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
-              {data.routingGeoJson.features.map((route, i) => (
-                <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
-                    <span className="text-slate-500">→</span>
-                    <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
+              {data.routingGeoJson.features.map((route, i) => {
+                const blurb = getLogisticsBlurb(route.properties.origin_kitchen, route.properties.urgency);
+                return (
+                  <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
+                      <span className="text-slate-500">→</span>
+                      <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
+                    </div>
+                    <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
+                    <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
+                      {blurb.action}
+                    </div>
                   </div>
-                  <div className="text-slate-400 flex justify-between">
-                    <span>Status: </span>
-                    <span className={route.properties.urgency === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-300'}>
-                      {route.properties.urgency}
-                    </span>
-                  </div>
-                  <div className="text-[9px] text-slate-600 mt-1 italic">
-                    Permit: {route.properties.permit_verification}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </HudPanel>
         </div>
