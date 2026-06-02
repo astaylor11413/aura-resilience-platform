@@ -442,7 +442,7 @@ export default function App() {
               <textarea
                 value={reportText}
                 onChange={(e) => setReportText(e.target.value)}
-                placeholder="Enter incident report..."
+                placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
                 className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
               />
               <button
