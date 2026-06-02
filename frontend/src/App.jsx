@@ -23,22 +23,33 @@ const substationLayer = {
   }
 };
 
-const marineLayer = {
-  id: 'marine-layer',
+// --- RESTORED ORIGINAL MARINE LAYERS ---
+const marinePolygonLayer = {
+  id: 'marine-anomaly-polygon-layer',
+  type: 'fill',
+  paint: {
+    'fill-color': '#f59e0b',       // amber-500
+    'fill-opacity': 0.15,
+    'fill-outline-color': '#fbbf24' // amber-400
+  }
+};
+
+const marineGlowLayer = {
+  id: 'marine-anomaly-glow-layer',
   type: 'circle',
   paint: {
+    // Dynamic exponential zoom interpolation creating the large visual sweep
     'circle-radius': [
-      'interpolate', ['linear'], ['get', 'microplastic_density_ppm'],
-      300, 6,
-      900, 14
+      'interpolate', ['exponential', 2], ['zoom'],
+      10, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 105, 60],
+      13, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 210, 120],
+      16, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 420, 240]
     ],
-    'circle-color': [
-      'match',
-      ['get', 'status'],
-      'CRITICAL_STORM_INCUBATION', '#ef4444',
-      '#14b8a6' // teal-500
-    ],
-    'circle-opacity': 0.75
+    'circle-color': '#f59e0b',
+    'circle-opacity': 0.08, // Subtle transparency rule
+    'circle-stroke-width': 1.5,
+    'circle-stroke-color': '#fbbf24',
+    'circle-stroke-opacity': 0.4
   }
 };
 
@@ -72,7 +83,7 @@ export default function App() {
   const { state, setters, data, geoJson } = useAuraData();
   const [reportText, setReportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
@@ -80,7 +91,7 @@ export default function App() {
   const handleProcessTransmission = async () => {
     if (!reportText.trim()) return;
     setIsProcessing(true);
-    
+
     try {
       const formData = new FormData();
       formData.append('text', reportText);
@@ -90,7 +101,7 @@ export default function App() {
         method: 'POST',
         body: formData
       });
-      
+
       const resData = await response.json();
       if (resData.status === 'success') {
         // Feed the threat matrix match down into the GNN engine state triggers
@@ -99,7 +110,7 @@ export default function App() {
         }
         // Update local hook context data array if matching key is registered
         if (data.triageReport !== undefined) {
-          data.triageReport = resData; 
+          data.triageReport = resData;
         }
         alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
       }
@@ -112,7 +123,7 @@ export default function App() {
 
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
-      
+
       {/* MAP UNDERLAY */}
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         <Map
@@ -132,10 +143,16 @@ export default function App() {
             <Layer {...routingLayer} />
           </Source>
 
-          {/* Marine Thermal Anomalies Points */}
-          <Source id="marine-data" type="geojson" data={geoJson.compiledMarineGeoJson}>
-            <Layer {...marineLayer} />
-          </Source>
+          {/* RESTORED OCEANOGRAPHIC WATCHDOG TELEMETRY LAYER */}
+          {geoJson.compiledMarineGeoJson?.features?.length > 0 && (
+            <Source id="marine-data" type="geojson" data={geoJson.compiledMarineGeoJson}>
+              {/* Base Polygon/Point Fill */}
+              <Layer {...marinePolygonLayer} />
+
+              {/* Large Translucent Hazard Glow Layer */}
+              <Layer {...marineGlowLayer} />
+            </Source>
+          )}
 
           {/* Physics-Informed Substation Points */}
           <Source id="substation-data" type="geojson" data={geoJson.compiledSubstationGeoJson}>
@@ -146,7 +163,7 @@ export default function App() {
 
       {/* RESPONSIVE HUD FOREGROUND */}
       <div className="relative md:absolute inset-0 z-30 pt-[42vh] md:pt-0 p-4 md:p-6 pointer-events-none grid grid-cols-1 md:grid-cols-12 md:grid-rows-6 gap-4 overflow-y-auto md:overflow-visible">
-        
+
         {/* HEADER BAR */}
         <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
           <div className="flex items-center gap-3">
@@ -155,10 +172,10 @@ export default function App() {
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input 
-                type="checkbox" 
-                checked={state.airGapped} 
-                onChange={(e) => setters.setAirGapped(e.target.checked)} 
+              <input
+                type="checkbox"
+                checked={state.airGapped}
+                onChange={(e) => setters.setAirGapped(e.target.checked)}
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
               <span>AIR_GAPPED_MODE</span>
@@ -181,7 +198,7 @@ export default function App() {
               <input type="range" min="0" max="3" step="0.5" value={state.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
             </div>
             {state.activeThreatIndex !== null && (
-              <button 
+              <button
                 onClick={() => setters.setActiveThreatIndex(null)}
                 className="mt-2 text-[9px] font-mono text-rose-400 hover:underline block text-left"
               >
@@ -191,13 +208,13 @@ export default function App() {
           </HudPanel>
 
           <HudPanel title="Logistics Transcriber">
-            <textarea 
+            <textarea
               value={reportText}
               onChange={(e) => setReportText(e.target.value)}
-              placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..." 
-              className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans" 
+              placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
+              className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
             />
-            <button 
+            <button
               onClick={handleProcessTransmission}
               disabled={isProcessing}
               className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
