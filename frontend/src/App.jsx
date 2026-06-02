@@ -69,17 +69,29 @@ const inundationLayer = {
 const routingLayer = {
   id: 'routing-layer',
   type: 'line',
-  layout: { 'line-join': 'round', 'line-cap': 'round' },
+  layout: {
+    'line-join': 'round',
+    'line-cap': 'round'
+  },
   paint: {
+    // Dynamic color based on urgency
     'line-color': [
       'match',
       ['get', 'urgency'],
-      'CRITICAL', '#ef4444',
-      'HIGH', '#f97316',
-      '#a855f7'
+      'CRITICAL', '#ef4444', // Red for immediate action
+      'HIGH', '#f97316',     // Orange for secondary flow
+      '#8b5cf6'              // Purple for baseline support
     ],
-    'line-width': 3,
-    'line-dasharray': [2, 2]
+    // Width represents throughput volume
+    'line-width': [
+      'match',
+      ['get', 'urgency'],
+      'CRITICAL', 6,
+      'HIGH', 4,
+      2
+    ],
+    // Animated dash effect for movement
+    'line-dasharray': [2, 1.5],
   }
 };
 const getLogisticsBlurb = (facilityName, urgency) => {
@@ -113,11 +125,11 @@ export default function App() {
   const { state, setters, data, geoJson } = useAuraData();
   const [reportText, setReportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const [showMarineLayer, setShowMarineLayer] = useState(false);
   const [showRoutingLayer, setShowRoutingLayer] = useState(false);
-  
-  const mapRef = useRef(null); 
+
+  const mapRef = useRef(null);
 
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
@@ -129,7 +141,7 @@ export default function App() {
       center: [lng, lat],
       zoom: 12.5,
       essential: true,
-      duration: 2000 
+      duration: 2000
     });
   };
   const triggerResilientOrchestrationStory = () => {
@@ -186,7 +198,7 @@ export default function App() {
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         <Map
           {...viewState}
-          ref={mapRef} 
+          ref={mapRef}
           onMove={evt => setViewState(evt.viewState)}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/dark-v11"
@@ -201,6 +213,33 @@ export default function App() {
           {showRoutingLayer && (
             <Source id="routing-data" type="geojson" data={data.routingGeoJson}>
               <Layer {...routingLayer} />
+              {/* LABEL LAYER - Shows the urgency label directly on the map */}
+              <Layer
+                id="routing-labels"
+                type="symbol"
+                layout={{
+                  'text-field': ['get', 'urgency'],
+                  'text-size': 10,
+                  'text-offset': [0, -1],
+                  'text-anchor': 'bottom',
+                  'symbol-placement': 'line'
+                }}
+                paint={{ 'text-color': '#ffffff' }}
+              />
+              <Layer
+                id="routing-arrows"
+                type="symbol"
+                layout={{
+                  'symbol-placement': 'line',
+                  'symbol-spacing': 50, // Distance between arrows
+                  'text-field': '▶',
+                  'text-size': 12,
+                  'text-keep-upright': true
+                }}
+                paint={{
+                  'text-color': '#ffffff'
+                }}
+              />
             </Source>
           )}
 
@@ -265,7 +304,7 @@ export default function App() {
           >
             <ShieldAlert size={18} /> {state.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
           </button>
-          
+
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
@@ -284,7 +323,7 @@ export default function App() {
               </button>
             )}
           </HudPanel>
-          
+
           <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {data.marineAnomalies.map((m, i) => {
@@ -373,7 +412,7 @@ export default function App() {
               ))}
             </div>
           </HudPanel>
-          
+
           <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {data.routingGeoJson.features.map((route, i) => {
