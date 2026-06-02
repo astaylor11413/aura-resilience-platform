@@ -14,7 +14,7 @@ export default function App() {
   });
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden text-slate-100 bg-slate-950 font-sans">
+    <div className="relative w-screen h-screen overflow-hidden text-slate-100 bg-trench font-sans">
       
       {/* MAP UNDERLAY */}
       <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-auto">
@@ -35,11 +35,11 @@ export default function App() {
         {/* HEADER BAR */}
         <header className="col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto">
           <div className="flex items-center gap-3">
-            <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse" />
+            <div className={`h-3 w-3 rounded-full ${state.gridState === 'NOMINAL' ? 'bg-seafoam-500' : 'bg-coral-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA // Command Center</h1>
           </div>
           <div className="font-mono text-xs text-slate-400">
-            STATE: <span className={state.gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-amber-400'}>{state.gridState}</span>
+            STATE: <span className={state.gridState === 'NOMINAL' ? 'text-seafoam-400' : 'text-coral-400'}>{state.gridState}</span>
           </div>
         </header>
 
@@ -47,12 +47,12 @@ export default function App() {
         <div className="col-span-3 row-span-5 flex flex-col gap-4">
           <HudPanel title="Environmental Vectors" aiBadge>
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-cyan-400">{state.windSpeed} MPH</span></div>
-              <input type="range" min="10" max="100" value={state.windSpeed} onChange={(e) => setters.setWindSpeed(e.target.value)} className="w-full accent-cyan-400 cursor-pointer" />
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-seafoam-400">{state.windSpeed} MPH</span></div>
+              <input type="range" min="10" max="100" value={state.windSpeed} onChange={(e) => setters.setWindSpeed(e.target.value)} className="w-full accent-seafoam-400 cursor-pointer" />
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-sky-400">+{state.slrMeters}m</span></div>
-              <input type="range" min="0" max="3" step="0.5" value={state.slrMeters} onChange={(e) => setters.setSlrMeters(e.target.value)} className="w-full accent-sky-400 cursor-pointer" />
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-seafoam-400">+{state.slrMeters}m</span></div>
+              <input type="range" min="0" max="3" step="0.5" value={state.slrMeters} onChange={(e) => setters.setSlrMeters(e.target.value)} className="w-full accent-seafoam-400 cursor-pointer" />
             </div>
           </HudPanel>
 
@@ -71,12 +71,12 @@ export default function App() {
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.gridAssets.map(asset => (
                 <details key={asset.id || Math.random()} className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group">
-                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between">
+                  <summary className="text-[11px] font-mono text-seafoam-400 list-none flex justify-between">
                     <span>{asset.name}</span>
                     <span className="text-slate-500 group-open:rotate-180 transition-transform">▼</span>
                   </summary>
                   <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2">
-                    Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-slate-300'}>{asset.status}</span>
+                    Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-coral-400' : 'text-slate-300'}>{asset.status}</span>
                   </div>
                 </details>
               ))}
