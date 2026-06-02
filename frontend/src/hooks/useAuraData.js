@@ -8,13 +8,14 @@ export const useAuraData = () => {
             return item ? JSON.parse(item) : fallback;
         } catch { return fallback; }
     };
+
     // Core State
     const [isSimulating, setIsSimulating] = useState(false);
-    const [hurricaneIntensity, setHurricaneIntensity] = useState(1);
-    const [windSpeed, setWindSpeed] = useState(25);
-    const [slrMeters, setSlrMeters] = useState(0.0);
-    const [activeThreatIndex, setActiveThreatIndex] = useState(null);
-    const [airGapped, setAirGapped] = useState(false);
+    const [hurricaneIntensity, setHurricaneIntensity] = useState(() => getStored('hurricaneIntensity', 1));
+    const [windSpeed, setWindSpeed] = useState(() => getStored('windSpeed', 25));
+    const [slrMeters, setSlrMeters] = useState(() => getStored('slrMeters', 0.0));
+    const [activeThreatIndex, setActiveThreatIndex] = useState(() => getStored('activeThreatIndex', null));
+    const [airGapped, setAirGapped] = useState(() => getStored('airGapped', false));
 
     // Data Repositories
     const [gridAssets, setGridAssets] = useState([]);
@@ -24,6 +25,9 @@ export const useAuraData = () => {
     const [triageReport, setTriageReport] = useState(null);
     const [routingGeoJson, setRoutingGeoJson] = useState({ type: 'FeatureCollection', features: [] });
     const [inundationGeoJson, setInundationGeoJson] = useState({ type: 'FeatureCollection', features: [] });
+
+    // Environment Base URL
+    const API_BASE = import.meta.env.VITE_AURA_API_BASE_URL || 'https://aura-resilience-platform-prod.onrender.com/api/v1';
 
     // Persistence Sync
     useEffect(() => {
@@ -36,13 +40,12 @@ export const useAuraData = () => {
 
     // 1. Grid Simulation Sync
     useEffect(() => {
-        // Stability: Prevent network request if airGapped
         if (airGapped) return;
 
         const threatQuery = activeThreatIndex !== null ? `&threat_index=${activeThreatIndex}` : '';
         const controller = new AbortController();
 
-        fetch(`https://aura-resilience-platform-qa.onrender.com/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}${threatQuery}`, { signal: controller.signal })
+        fetch(`${API_BASE}/resilience/simulate-grid?wind_speed_mph=${windSpeed}${threatQuery}`, { signal: controller.signal })
             .then(res => res.json())
             .then(data => {
                 if (data && typeof data === 'object') {
@@ -57,15 +60,14 @@ export const useAuraData = () => {
             });
 
         return () => controller.abort();
-    }, [windSpeed, activeThreatIndex, airGapped]);
+    }, [windSpeed, activeThreatIndex, airGapped, API_BASE]);
 
     // 2. Inundation Vector Sync
     useEffect(() => {
-        // Stability: Prevent network request if airGapped
         if (airGapped) return;
 
         const controller = new AbortController();
-        fetch(`https://aura-resilience-platform-qa.onrender.com/api/v1/hazard/inundation?slr_meters=${slrMeters}`, { signal: controller.signal })
+        fetch(`${API_BASE}/hazard/inundation?slr_meters=${slrMeters}`, { signal: controller.signal })
             .then(res => res.json())
             .then(geoJson => {
                 if (geoJson?.type === 'FeatureCollection') setInundationGeoJson(geoJson);
@@ -75,24 +77,22 @@ export const useAuraData = () => {
             });
 
         return () => controller.abort();
-    }, [slrMeters, airGapped]);
+    }, [slrMeters, airGapped, API_BASE]);
 
     // 3. Static Oceanographic & Logistics Sync
     useEffect(() => {
-        // Stability: Prevent network request if airGapped
         if (airGapped) return;
 
-        fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/marine/thermal-anomalies')
+        fetch(`${API_BASE}/marine/thermal-anomalies`)
             .then(res => res.json())
             .then(data => { if (data?.features) setMarineAnomalies(data.features); })
             .catch(err => console.error("Marine fetch error:", err));
 
-        fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/spatial/mutual-aid-paths')
+        fetch(`${API_BASE}/spatial/mutual-aid-paths`)
             .then(res => res.json())
             .then(geoJson => { if (geoJson?.features) setRoutingGeoJson(geoJson); })
             .catch(err => console.error("Routing fetch error:", err));
-    }, [airGapped]);
-
+    }, [airGapped, API_BASE]);
 
     // Derived GeoJSON Compilations
     const compiledSubstationGeoJson = {
@@ -108,7 +108,6 @@ export const useAuraData = () => {
         })).filter(f => f.geometry?.coordinates)
     };
 
-    // Displayed Polygons for Marine Anomalies
     const compiledMarineGeoJson = {
         type: "FeatureCollection",
         features: marineAnomalies.map(anomaly => ({
@@ -118,40 +117,44 @@ export const useAuraData = () => {
         }))
     };
 
-    // Reset App Progress with Local Storage Clear
+    // System Wiping Utility
     const resetAuraState = () => {
-        // Clear used keys 
         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('aura_')) localStorage.removeItem(key);
         });
-
-        // Reload the window to clear memory and re-initialize with defaults
         window.location.reload();
-    };
-
-    // Update the return object to include this in the setters
-    return {
-        // ... existing state/data/geoJson
-        setters: {
-            // ... existing setters
-            resetAuraState
-        }
     };
 
     return {
         state: {
-            windSpeed, slrMeters, activeThreatIndex, airGapped, gridState, derOutput,
-            isSimulating, hurricaneIntensity
+            windSpeed,
+            slrMeters,
+            activeThreatIndex,
+            airGapped,
+            gridState,
+            derOutput,
+            isSimulating,
+            hurricaneIntensity
         },
         setters: {
-            setWindSpeed, setSlrMeters, setActiveThreatIndex, setAirGapped,
-            setIsSimulating, setHurricaneIntensity
+            setWindSpeed,
+            setSlrMeters,
+            setActiveThreatIndex,
+            setAirGapped,
+            setIsSimulating,
+            setHurricaneIntensity,
+            resetAuraState
         },
         data: {
-            gridAssets, marineAnomalies, triageReport, routingGeoJson, inundationGeoJson
+            gridAssets,
+            marineAnomalies,
+            triageReport,
+            routingGeoJson,
+            inundationGeoJson
         },
         geoJson: {
-            compiledSubstationGeoJson, compiledMarineGeoJson
+            compiledSubstationGeoJson,
+            compiledMarineGeoJson
         }
     };
 };
