@@ -98,7 +98,26 @@ export default function App() {
       duration: 2000 // Smooth panning duration in milliseconds
     });
   };
+  const triggerResilientOrchestrationStory = () => {
+    // 1. Trigger visual simulation state
+    setters.setIsSimulating(true);
 
+    // 2. Adjust environmental variables to storm-level
+    setters.setWindSpeed(78);
+    setters.setSlrMeters(2.0);
+    setters.setHurricaneIntensity(5);
+
+    // 3. Audio/Broadcast Logic
+    const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
+
+    // 4. (Optional) Force the map to the most critical anomaly node
+    const criticalNode = data.marineAnomalies.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL"));
+    if (criticalNode?.geometry?.coordinates) {
+      const [lng, lat] = criticalNode.geometry.coordinates;
+      mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, essential: true });
+    }
+  };
   const handleProcessTransmission = async () => {
     if (!reportText.trim()) return;
     setIsProcessing(true);
@@ -200,7 +219,7 @@ export default function App() {
             onClick={triggerResilientOrchestrationStory}
             className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
           >
-            <ShieldAlert size={18} /> Simulate Hurricane Impact
+            <ShieldAlert size={18} /> {state.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
           </button>
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
