@@ -184,7 +184,7 @@ export default function App() {
   const handleProcessTransmission = async () => {
     if (!reportText.trim()) return;
     setIsProcessing(true);
-    
+
     if (state.airGapped) {
       try {
         const result = await runLocalTriage(reportText, state);
@@ -223,8 +223,10 @@ export default function App() {
   };
 
   // Determine Data Sources based on Mode
-  const activeInundation = state.airGapped ? runLocalInundation(state.slrMeters) : (data?.inundationGeoJson || { type: 'FeatureCollection', features: [] });
-  
+  const activeInundation = state.airGapped
+    ? runLocalInundation(state.slrMeters)
+    : (geoJson?.inundationGeoJson || { type: 'FeatureCollection', features: [] });
+
   // Normalized Grid Resolution Mapping
   let processedSubstationFeatures = [];
   let calculatedGridState = 'NOMINAL';
@@ -242,7 +244,7 @@ export default function App() {
     calculatedGridState = state.gridState || 'NOMINAL';
     const cloudGeoJson = geoJson?.compiledSubstationGeoJson || { type: 'FeatureCollection', features: [] };
     const rawAssetsList = data?.gridAssets || [];
-    
+
     processedSubstationFeatures = (cloudGeoJson.features || []).map(f => {
       const liveAssetMatch = rawAssetsList.find(a => a.id === f.properties?.id);
       return {
@@ -255,8 +257,8 @@ export default function App() {
     });
   }
 
-  const activeMarineFeatures = state.airGapped 
-    ? runLocalMarineTelemetry() 
+  const activeMarineFeatures = state.airGapped
+    ? runLocalMarineTelemetry()
     : (geoJson?.compiledMarineGeoJson?.features || []);
 
   const activeRoutingGeoJson = data?.routingGeoJson || { type: 'FeatureCollection', features: [] };
@@ -391,7 +393,7 @@ export default function App() {
               System Reset
             </button>
           </div>
-          
+
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
@@ -511,7 +513,7 @@ export default function App() {
                 const destShelter = route.properties?.destination_shelter || 'Unknown Shelter';
                 const urgency = route.properties?.urgency || 'LOW';
                 const blurb = getLogisticsBlurb(originKitchen, urgency);
-                
+
                 return (
                   <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
                     <div className="flex justify-between items-center mb-1">
