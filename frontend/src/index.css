@@ -38,3 +38,8 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Custom system fixes for map engine layers */
+.mapboxgl-canvas {
+  outline: none;
+}

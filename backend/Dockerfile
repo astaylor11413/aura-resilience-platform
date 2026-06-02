@@ -7,20 +7,26 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies required for libraries like SciPy
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    gfortran \
+    libopenblas-dev \
+    liblapack-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python requirements matrix
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Force pip to bypass its internal caching wheel storage to keep memory overhead lean
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the server engine files into the container space
 COPY . /app/
 
 # Expose the designated internal routing engine port
-EXPOSE 8000
+EXPOSE 10000
 
-# Fire up Gunicorn as the WSGI worker server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:app"]
+# Fire up Gunicorn as a single WSGI worker thread to fit safely inside the 2GB memory tier
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app", "--workers", "1", "--timeout", "180"]

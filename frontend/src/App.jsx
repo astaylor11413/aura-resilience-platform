@@ -1,129 +1,459 @@
-import React, { useState, useEffect } from 'react';
-import Map, { Source, Layer, Marker } from 'react-map-gl';
-import { Wind, Activity, Volume2, HardHat, Waves, ShieldAlert, Zap } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import Map, { Source, Layer } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { useAuraData } from './hooks/useAuraData';
+import { HudPanel } from './components/HudPanel';
+import { ShieldAlert, Wind, Activity } from 'lucide-react';
 
-const MAPBOX_TOKEN = 'YOUR_MAPBOX_ACCESS_TOKEN';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
+const HOME_COORDINATES = {
+  longitude: -76.78,
+  latitude: 17.95,
+  zoom: 11
+};
+// --- MAP STYLE LAYERS FOR BACKEND DATA ---
+const substationLayer = {
+  id: 'substations-layer',
+  type: 'circle',
+  paint: {
+    'circle-radius': 8,
+    'circle-color': [
+      'match',
+      ['get', 'status'],
+      'critical', '#f43f5e', // coral-500
+      '#10b981'              // emerald-500
+    ],
+    'circle-stroke-width': 2,
+    'circle-stroke-color': '#ffffff'
+  }
+};
+
+// --- RESTORED ORIGINAL MARINE LAYERS ---
+const marinePolygonLayer = {
+  id: 'marine-anomaly-polygon-layer',
+  type: 'fill',
+  paint: {
+    'fill-color': '#f59e0b',        // amber-500
+    'fill-opacity': 0.15,
+    'fill-outline-color': '#fbbf24' // amber-400
+  }
+};
+
+const marineGlowLayer = {
+  id: 'marine-anomaly-glow-layer',
+  type: 'circle',
+  paint: {
+    'circle-radius': [
+      'interpolate', ['exponential', 2], ['zoom'],
+      10, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 105, 60],
+      13, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 210, 120],
+      16, ['match', ['get', 'status'], 'CRITICAL_STORM_INCUBATION', 420, 240]
+    ],
+    'circle-color': '#f59e0b',
+    'circle-opacity': 0.08,
+    'circle-stroke-width': 1.5,
+    'circle-stroke-color': '#fbbf24',
+    'circle-stroke-opacity': 0.4
+  }
+};
+
+const inundationLayer = {
+  id: 'inundation-layer',
+  type: 'fill',
+  paint: {
+    'fill-color': '#3b82f6',
+    'fill-opacity': 0.4
+  }
+};
+
+const routingLayer = {
+  id: 'routing-layer',
+  type: 'line',
+  layout: {
+    'line-join': 'round',
+    'line-cap': 'round'
+  },
+  paint: {
+    // Dynamic color based on urgency
+    'line-color': [
+      'match',
+      ['get', 'urgency'],
+      'CRITICAL', '#ef4444', // Red for immediate action
+      'HIGH', '#f97316',     // Orange for secondary flow
+      '#8b5cf6'              // Purple for baseline support
+    ],
+    // Width represents throughput volume
+    'line-width': [
+      'match',
+      ['get', 'urgency'],
+      'CRITICAL', 6,
+      'HIGH', 4,
+      2
+    ],
+    // Animated dash effect for movement
+    'line-dasharray': [2, 1.5],
+  }
+};
+const getLogisticsBlurb = (facilityName, urgency) => {
+  const name = facilityName.toLowerCase();
+  const isKitchen = name.includes("kitchen");
+  const isHub = name.includes("hub");
+
+  if (urgency === 'CRITICAL') {
+    if (isKitchen) return {
+      text: "Supply chain bottleneck at food preparation site. Immediate risk of caloric deficit in shelter zones.",
+      action: "DEPLOY: Mobile distribution fleet."
+    };
+    if (isHub) return {
+      text: "Communication and coordination node compromised. Islanded communities are losing situational oversight.",
+      action: "DEPLOY: Satellite comms relay unit."
+    };
+    // Default to Relief Station logic
+    return {
+      text: "Medical/Supply relief station capacity reached. Critical backlog in emergency aid throughput.",
+      action: "DEPLOY: Secondary triage field unit."
+    };
+  }
+
+  return {
+    text: "Operational status nominal. Maintaining flow of essential resources to designated zones.",
+    action: "STATUS: Steady state operations."
+  };
+};
 
 export default function App() {
-  const [viewState, setViewState] = useState({ latitude: 17.96, longitude: -76.79, zoom: 9.5 });
-  const [windSpeed, setWindSpeed] = useState(25);
-  const [slrMeters, setSlrMeters] = useState(0.0);
-  const [gridData, setGridData] = useState(null);
-  const [oceanData, setOceanData] = useState(null);
-  const [floodGeoJson, setFloodGeoJson] = useState(null);
-  const [liveTranscription, setLiveTranscription] = useState("");
-  const [activeOutputKw, setActiveOutputKw] = useState(0);
+  const { state, setters, data, geoJson } = useAuraData();
+  const [reportText, setReportText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/v1/ocean/telemetry').then(res => res.json()).then(data => setOceanData(data));
-  }, []);
+  const [showMarineLayer, setShowMarineLayer] = useState(false);
+  const [showRoutingLayer, setShowRoutingLayer] = useState(false);
 
-  useEffect(() => {
-    fetch(`http://127.0.0.1:8000/api/v1/resilience/simulate-grid?wind_speed_mph=${windSpeed}`)
-      .then(res => res.json())
-      .then(data => {
-        setGridData(data);
-        setActiveOutputKw(data.calculated_der_output_kw);
-      });
-  }, [windSpeed]);
+  const mapRef = useRef(null);
 
-  useEffect(() => {
-    fetch(`http://127.0.0.1:8000/api/v1/hazard/inundation?slr_meters=${slrMeters}`).then(res => res.json()).then(data => setFloodGeoJson(data));
-  }, [slrMeters]);
+  const [viewState, setViewState] = useState({
+    longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
+  });
 
-  // The 30-Second Single-Tap "Story Mode" Trigger
-  const triggerResilientOrchestrationStory = () => {
-    setWindSpeed(78);
-    setSlrMeters(2.0);
-    executeVoiceBroadcast("Warning: Main transmission feeds compromised by surge forces. Aura platform activating local autonomous microgrid isolation loops. Resilient downwind turbine arrays online.");
-  };
-
-  const executeVoiceBroadcast = (text) => {
-    fetch('http://127.0.0.1:8000/api/v1/voice/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text })
-    })
-    .then(res => {
-      if (res.headers.get("content-type") === "audio/mpeg") {
-        res.blob().then(b => new Audio(URL.createObjectURL(b)).play());
-      } else {
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-      }
+  const handlePanToTarget = (lng, lat) => {
+    if (!lng || !lat) return;
+    mapRef.current?.flyTo({
+      center: [lng, lat],
+      zoom: 12.5,
+      essential: true,
+      duration: 2000
     });
+  };
+  const triggerResilientOrchestrationStory = () => {
+    setters.setIsSimulating(true);
+
+    setters.setWindSpeed(78);
+    setters.setSlrMeters(2.0);
+    setters.setHurricaneIntensity(5);
+
+    const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
+
+    const criticalNode = data.marineAnomalies.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL"));
+    if (criticalNode?.geometry?.coordinates) {
+      const [lng, lat] = criticalNode.geometry.coordinates;
+      mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, essential: true });
+    }
+  };
+  const handleProcessTransmission = async () => {
+    if (!reportText.trim()) return;
+    setIsProcessing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('text', reportText);
+      formData.append('air_gapped', state.airGapped ? 'true' : 'false');
+
+      const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
+        method: 'POST',
+        body: formData
+      });
+
+      const resData = await response.json();
+      if (resData.status === 'success') {
+        if (resData.matched_node_threat_index !== null) {
+          setters.setActiveThreatIndex(resData.matched_node_threat_index);
+        }
+        if (data.triageReport !== undefined) {
+          data.triageReport = resData;
+        }
+        alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
+      }
+    } catch (err) {
+      console.error('Transmission processing failure:', err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#0f172a', color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ padding: '14px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#0f172a' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Zap color="#00ffcc" size={18} />
-          <h1 style={{ fontSize: '14px', margin: 0, fontWeight: 800 }}>AURA // INFRASTRUCTURE SELF-HEALING ORCHESTRATOR</h1>
-        </div>
-      </header>
+    <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row' }}>
-        {/* Map Canvas */}
-        <div style={{ flex: 1, position: 'relative', minHeight: '400px' }}>
-          <Map {...viewState} onMove={evt => setViewState(evt.viewState)} mapStyle="mapbox://styles/mapbox/dark-v11" mapboxAccessToken={MAPBOX_TOKEN}>
-            {floodGeoJson && <Source id="flood" type="geojson" data={floodGeoJson}><Layer type="fill" paint={{ 'fill-color': '#ef4444', 'fill-opacity': 0.35 }} /></Source>}
-            
-            {/* Dynamic Utility Substation Rendering */}
-            {gridData?.assets?.map(asset => (
-              <Marker key={asset.id} latitude={asset.coordinates[1]} longitude={asset.coordinates[0]}>
-                <div 
-                  style={{
-                    width: '14px', height: '14px', borderRadius: '50%',
-                    background: asset.status.includes('DOWN') ? '#ef4444' : asset.status.includes('ISLANDED') ? '#38bdf8' : '#22c55e',
-                    border: '2px solid #fff', boxShadow: '0 0 10px rgba(255,255,255,0.5)'
-                  }} 
-                  title={`${asset.name} - ${asset.status}`}
-                />
-              </Marker>
-            ))}
-          </Map>
-        </div>
+      {/* MAP UNDERLAY */}
+      <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
+        <Map
+          {...viewState}
+          ref={mapRef}
+          onMove={evt => setViewState(evt.viewState)}
+          mapboxAccessToken={MAPBOX_TOKEN}
+          mapStyle="mapbox://styles/mapbox/dark-v11"
+          style={{ width: '100%', height: '100%' }}
+        >
+          {/* Inundation Vectors Polygons */}
+          <Source id="inundation-data" type="geojson" data={data.inundationGeoJson}>
+            <Layer {...inundationLayer} />
+          </Source>
 
-        {/* Sidebar Controls */}
-        <div style={{ width: window.innerWidth < 768 ? '100%' : '360px', padding: '20px', backgroundColor: '#0f172a', borderLeft: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '15px', boxSizing: 'border-box' }}>
-          
-          <button onClick={triggerResilientOrchestrationStory} style={{ width: '100%', backgroundColor: '#ef4444', border: 'none', padding: '14px', borderRadius: '6px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <ShieldAlert size={18} /> Simulate Hurricane Landing
+          {/* Conditional Mutual Aid Path Vectors */}
+          {showRoutingLayer && (
+            <Source id="routing-data" type="geojson" data={data.routingGeoJson}>
+              <Layer {...routingLayer} />
+              {/* LABEL LAYER - Shows the urgency label directly on the map */}
+              <Layer
+                id="routing-labels"
+                type="symbol"
+                layout={{
+                  'text-field': ['get', 'urgency'],
+                  'text-size': 10,
+                  'text-offset': [0, -1],
+                  'text-anchor': 'bottom',
+                  'symbol-placement': 'line'
+                }}
+                paint={{ 'text-color': '#ffffff' }}
+              />
+              <Layer
+                id="routing-arrows"
+                type="symbol"
+                layout={{
+                  'symbol-placement': 'line',
+                  'symbol-spacing': 50, // Distance between arrows
+                  'text-field': '▶',
+                  'text-size': 12,
+                  'text-keep-upright': true
+                }}
+                paint={{
+                  'text-color': '#ffffff'
+                }}
+              />
+            </Source>
+          )}
+
+          {/* Conditional Oceanographic Watchdog Telemetry Layer */}
+          {showMarineLayer && geoJson.compiledMarineGeoJson?.features?.length > 0 && (
+            <Source id="marine-data" type="geojson" data={geoJson.compiledMarineGeoJson}>
+              <Layer {...marinePolygonLayer} />
+              <Layer {...marineGlowLayer} />
+            </Source>
+          )}
+
+          {/* Physics-Informed Substation Points */}
+          <Source id="substation-data" type="geojson" data={geoJson.compiledSubstationGeoJson}>
+            <Layer {...substationLayer} />
+          </Source>
+        </Map>
+      </div>
+
+      {/* RESPONSIVE HUD FOREGROUND */}
+      <div className="relative md:absolute inset-0 z-30 pt-[42vh] md:pt-0 p-4 md:p-6 pointer-events-none grid grid-cols-1 md:grid-cols-12 md:grid-rows-[auto_1fr_auto] h-full gap-4">
+
+        {/* HEADER BAR */}
+        <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
+          <div className="flex items-center gap-3">
+            <div className={`h-3 w-3 rounded-full ${state.gridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
+            <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
+          </div>
+          <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
+            <button
+              onClick={() => {
+                mapRef.current?.flyTo({
+                  center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude],
+                  zoom: HOME_COORDINATES.zoom,
+                  essential: true,
+                  duration: 1500
+                });
+              }}
+              className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors"
+            >
+              RESET_VIEW
+            </button>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={state.airGapped}
+                onChange={(e) => setters.setAirGapped(e.target.checked)}
+                className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
+              />
+              <span>AIR_GAPPED_MODE</span>
+            </label>
+            <div>
+              STATE: <span className={state.gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{state.gridState}</span>
+            </div>
+          </div>
+        </header>
+
+        {/* LEFT COLUMN */}
+        <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
+          <button
+            onClick={triggerResilientOrchestrationStory}
+            className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+          >
+            <ShieldAlert size={18} /> {state.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
           </button>
 
-          {/* Telemetry Harvest Matrix */}
-          <div style={{ backgroundColor: '#0b2545', padding: '14px', borderRadius: '8px', border: '1px solid #134074' }}>
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#64dfdf', display: 'flex', alignItems: 'center', gap: '6px' }}><Zap size={14} /> RESILIENT GENERATION MATRICES</h3>
-            <div style={{ fontSize: '20px', fontWeight: 'bold', color: activeOutputKw > 0 ? '#38bdf8' : '#94a3b8', margin: '8px 0' }}>
-              {activeOutputKw} kW Generated
+          <HudPanel title="Environmental Vectors">
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
+              <input type="range" min="10" max="100" value={state.windSpeed} onChange={(e) => setters.setWindSpeed(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
             </div>
-            <p style={{ fontSize: '11px', color: '#cbd5e1', margin: 0 }}>Tracking distributed kinetic harvesting from downwind flexible energy installations engineered for extreme vectors.</p>
-          </div>
+            <div className="space-y-1 pt-2">
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{state.slrMeters}m</span></div>
+              <input type="range" min="0" max="3" step="0.5" value={state.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
+            </div>
+            {state.activeThreatIndex !== null && (
+              <button
+                onClick={() => setters.setActiveThreatIndex(null)}
+                className="mt-2 text-[9px] font-mono text-rose-400 hover:underline block text-left"
+              >
+                Clear Override Threat Node (Index: {state.activeThreatIndex})
+              </button>
+            )}
+          </HudPanel>
 
-          {/* Control Vectors */}
-          <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '11px', color: '#94a3b8' }}><Wind size={12} /> Kinetic Wind Feed: <strong>{windSpeed} MPH</strong></label>
-            <input type="range" min="15" max="100" value={windSpeed} onChange={(e) => setWindSpeed(Number(e.target.value))} style={{ width: '100%' }} />
-            
-            <label style={{ fontSize: '11px', color: '#94a3b8' }}><Waves size={12} /> Coastal Inundation Bounds: <strong>{slrMeters}m</strong></label>
-            <input type="range" min="0.0" max="3.0" step="0.5" value={slrMeters} onChange={(e) => setSlrMeters(parseFloat(e.target.value))} style={{ width: '100%' }} />
-          </div>
+          <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer}>
+            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+              {data.marineAnomalies.map((m, i) => {
+                const locName = m.properties?.location_name || '';
+                const tempAnomaly = m.properties?.surface_temp_anomaly_celsius || 0;
+                const geomCoords = m.geometry?.coordinates;
 
-          {/* Live Infrastructure State Controller */}
-          <div style={{ background: '#111827', padding: '14px', borderRadius: '8px', border: '1px solid #1e293b', flex: 1, overflowY: 'auto' }}>
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}><HardHat size={12} /> MICROGRID ROUTING MATRIX LOG</h4>
-            <div style={{ fontSize: '11px', lineHeight: '1.6' }}>
-              {gridData?.assets?.map(asset => (
-                <div key={asset.id} style={{ marginBottom: '8px', borderBottom: '1px solid #1e293b', paddingBottom: '4px' }}>
-                  <div style={{ color: '#e2e8f0', fontWeight: 600 }}>{asset.name}</div>
-                  <div style={{ fontSize: '10px', color: asset.status.includes('CRITICAL') ? '#ef4444' : asset.status.includes('ISLANDED') ? '#38bdf8' : '#4ade80' }}>{asset.status}</div>
-                  <div style={{ fontSize: '10px', color: '#64748b' }}>Route: {asset.power_routing}</div>
-                </div>
+                let localImpactBlurb = "Monitoring regional baseline indices. Elevated surface metrics signal early risks of local benthic ecosystem stress.";
+
+                if (locName.includes("Coral Bleaching Cluster A")) {
+                  localImpactBlurb = `A +${tempAnomaly}°C spike here accelerates severe coral bleaching across nearshore reefs. For locals, this threatens critical artisanal fishing grounds and degrades the natural storm barriers shielding the Kingston shoreline.`;
+                } else if (locName.includes("Pedro Bank")) {
+                  localImpactBlurb = `This massive +${tempAnomaly}°C anomaly in the pelagic gyre traps heavy sargassum biomass. Drifting fields choke down south-coast harbors, drop marine oxygen values, and disrupt active commercial fishing links.`;
+                } else if (locName.includes("Algal Stress Hotspot")) {
+                  localImpactBlurb = `Sustained temperatures +${tempAnomaly}°C above historical norms trigger rapid toxic microalgae spikes on the shallow shelf. This risks bioaccumulation issues in shellfish maps and harms beach infrastructure groups.`;
+                }
+
+                return (
+                  <details
+                    key={i}
+                    className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                    onToggle={(e) => {
+                      if (e.currentTarget.open && geomCoords) {
+                        handlePanToTarget(geomCoords[0], geomCoords[1]);
+                      }
+                    }}
+                  >
+                    <summary className="text-[10px] font-mono list-none flex justify-between items-center select-none">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
+                          {locName || 'Anomalous Subsystem'}
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-sans">
+                          Watchdog: {m.properties?.ai_watchdog_status || 'MONITOR'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-teal-400 font-bold">+{tempAnomaly}°C</span>
+                        <span className="text-slate-500 group-open:rotate-180 transition-transform text-[8px]">▼</span>
+                      </div>
+                    </summary>
+                    <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-sans leading-relaxed space-y-1.5">
+                      <div className="text-[9px] font-mono uppercase tracking-wider text-teal-500 font-bold">
+                        Community & Ecosystem Impact:
+                      </div>
+                      <p className="text-slate-300">
+                        {localImpactBlurb}
+                      </p>
+                      <div className="text-[9px] font-mono text-slate-500 pt-0.5">
+                        Microplastic Density: {m.properties?.microplastic_density_ppm || 0} ppm
+                      </div>
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </HudPanel>
+        </div>
+
+        {/* CENTER */}
+        <div className="hidden md:block md:col-span-6" />
+
+        {/* RIGHT COLUMN */}
+        <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
+          <HudPanel title="GNN Grid Analyzer">
+            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+              {data.gridAssets.map(asset => (
+                <details
+                  key={asset.id}
+                  className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                  onToggle={(e) => {
+                    if (e.currentTarget.open && asset.coordinates) {
+                      handlePanToTarget(asset.coordinates[0], asset.coordinates[1]);
+                    }
+                  }}
+                >
+                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
+                    <span>{asset.name}</span>
+                    <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
+                  </summary>
+                  <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
+                    <div>Status: <span className={asset.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{asset.status}</span></div>
+                    <div className="text-slate-500 text-[9px]">Routing: {asset.power_routing}</div>
+                  </div>
+                </details>
               ))}
             </div>
-          </div>
+          </HudPanel>
 
+          <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
+            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+              {data.routingGeoJson.features.map((route, i) => {
+                const blurb = getLogisticsBlurb(route.properties.origin_kitchen, route.properties.urgency);
+                return (
+                  <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
+                      <span className="text-slate-500">→</span>
+                      <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
+                    </div>
+                    <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
+                    <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
+                      {blurb.action}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </HudPanel>
+        </div>
+
+        {/* TRANSCRIBER */}
+        <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
+          <HudPanel title="Logistics Transcriber">
+            <div className="flex gap-2">
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Enter incident report..."
+                className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+              />
+              <button
+                onClick={handleProcessTransmission}
+                disabled={isProcessing}
+                className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
+              >
+                {isProcessing ? 'Processing...' : 'Process'}
+              </button>
+            </div>
+          </HudPanel>
         </div>
       </div>
     </div>
