@@ -14,10 +14,11 @@ export default function App() {
   });
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden text-slate-100 bg-trench font-sans">
+    <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-trench text-slate-100 font-sans">
       
       {/* MAP UNDERLAY */}
-      <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-auto">
+      {/* On mobile, this scales cleanly to 40% height. On desktop, it takes up the full screen background. */}
+      <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         <Map
           {...viewState}
           onMove={evt => setViewState(evt.viewState)}
@@ -29,11 +30,13 @@ export default function App() {
         </Map>
       </div>
 
-      {/* MODERN CSS GRID FOREGROUND */}
-      <div className="absolute inset-0 z-30 pointer-events-none p-6 grid grid-cols-12 grid-rows-6 gap-4">
+      {/* MODERN RESPONSIVE HUD FOREGROUND */}
+      {/* Mobile: Pushed down via pt-[42vh] so it never blocks the map, stacked vertically, natural scrolling. */}
+      {/* Desktop (md:): Overlays the full viewport, locks inner rows into a scannable grid configuration. */}
+      <div className="relative md:absolute inset-0 z-30 pt-[42vh] md:pt-0 p-4 md:p-6 pointer-events-none grid grid-cols-1 md:grid-cols-12 md:grid-rows-6 gap-4 overflow-y-auto md:overflow-visible">
         
         {/* HEADER BAR */}
-        <header className="col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto">
+        <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
           <div className="flex items-center gap-3">
             <div className={`h-3 w-3 rounded-full ${state.gridState === 'NOMINAL' ? 'bg-seafoam-500' : 'bg-coral-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA // Command Center</h1>
@@ -44,7 +47,7 @@ export default function App() {
         </header>
 
         {/* LEFT COLUMN: Controls & Logistics */}
-        <div className="col-span-3 row-span-5 flex flex-col gap-4">
+        <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
           <HudPanel title="Environmental Vectors" aiBadge>
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-seafoam-400">{state.windSpeed} MPH</span></div>
@@ -62,11 +65,11 @@ export default function App() {
           </HudPanel>
         </div>
 
-        {/* CENTER COLUMN: Leave Empty for Map Visibility */}
-        <div className="col-span-6 row-span-5" />
+        {/* CENTER COLUMN: Hidden on Mobile for Map visibility, active on Desktop */}
+        <div className="hidden md:block md:col-span-6 md:row-span-5" />
 
         {/* RIGHT COLUMN: Telemetry & Analyzers */}
-        <div className="col-span-3 row-span-5 flex flex-col gap-4">
+        <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
           <HudPanel title="GNN Grid Analyzer" color="emerald" aiBadge>
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.gridAssets.map(asset => (
