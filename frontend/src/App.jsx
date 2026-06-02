@@ -376,10 +376,7 @@ export default function App() {
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
               <span>AIR_GAPPED_MODE</span>
-            </label>
-            <div>
-              STATE: <span className={calculatedGridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{calculatedGridState}</span>
-            </div>
+            </label>                     
           </div>
         </header>
 
