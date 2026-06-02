@@ -16,4 +16,4 @@ export function HudPanel({ title, children }) {
       </div>
     </div>
   );
-}
+} 

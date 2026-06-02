@@ -227,23 +227,6 @@ export default function App() {
             <div className={`h-3 w-3 rounded-full ${state.gridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
           </div>
-          <div>
-            <HudPanel title="Logistics Transcriber">
-              <textarea
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
-                placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
-                className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
-              />
-              <button
-                onClick={handleProcessTransmission}
-                disabled={isProcessing}
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
-              >
-                {isProcessing ? 'Processing ...' : 'Process'}
-              </button>
-            </HudPanel>
-          </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
               onClick={() => {
@@ -415,8 +398,25 @@ export default function App() {
             </div>
           </HudPanel>
         </div>
-
+        
       </div>
+      <div>
+            <HudPanel title="Logistics Transcriber">
+              <textarea
+                value={reportText}
+                onChange={(e) => setReportText(e.target.value)}
+                placeholder="Enter incident report (e.g., 'Palisadoes line is underwater down south')..."
+                className="w-full h-20 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+              />
+              <button
+                onClick={handleProcessTransmission}
+                disabled={isProcessing}
+                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] py-2 rounded font-bold uppercase transition-colors text-white mt-1"
+              >
+                {isProcessing ? 'Processing ...' : 'Process'}
+              </button>
+            </HudPanel>
+          </div>
     </div>
   );
 }
