@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 
+// Rigid fallback structure to prevent Mapbox layout compilation errors
+const INITIAL_GEOJSON = {
+    type: 'FeatureCollection',
+    features: []
+};
+
 export const useAuraData = () => {
-    // Local Storage
+    // Local Storage Hydration
     const getStored = (key, fallback) => {
         try {
             const item = localStorage.getItem(`aura_${key}`);
@@ -9,7 +15,7 @@ export const useAuraData = () => {
         } catch { return fallback; }
     };
 
-    // Core State
+    // Core Control State
     const [isSimulating, setIsSimulating] = useState(false);
     const [hurricaneIntensity, setHurricaneIntensity] = useState(() => getStored('hurricaneIntensity', 1));
     const [windSpeed, setWindSpeed] = useState(() => getStored('windSpeed', 25));
@@ -23,8 +29,8 @@ export const useAuraData = () => {
     const [derOutput, setDerOutput] = useState(0.0);
     const [marineAnomalies, setMarineAnomalies] = useState([]);
     const [triageReport, setTriageReport] = useState(null);
-    const [routingGeoJson, setRoutingGeoJson] = useState({ type: 'FeatureCollection', features: [] });
-    const [inundationGeoJson, setInundationGeoJson] = useState({ type: 'FeatureCollection', features: [] });
+    const [routingGeoJson, setRoutingGeoJson] = useState(INITIAL_GEOJSON);
+    const [inundationGeoJson, setInundationGeoJson] = useState(INITIAL_GEOJSON);
 
     // Environment Base URL
     const API_BASE = import.meta.env.VITE_AURA_API_BASE_URL || 'https://aura-resilience-platform-prod.onrender.com/api/v1';
@@ -70,10 +76,17 @@ export const useAuraData = () => {
         fetch(`${API_BASE}/hazard/inundation?slr_meters=${slrMeters}`, { signal: controller.signal })
             .then(res => res.json())
             .then(geoJson => {
-                if (geoJson?.type === 'FeatureCollection') setInundationGeoJson(geoJson);
+                if (geoJson?.type === 'FeatureCollection') {
+                    setInundationGeoJson(geoJson);
+                } else {
+                    setInundationGeoJson(INITIAL_GEOJSON);
+                }
             })
             .catch(err => {
-                if (err.name !== 'AbortError') console.error("Inundation fetch error:", err);
+                if (err.name !== 'AbortError') {
+                    console.error("Inundation fetch error:", err);
+                    setInundationGeoJson(INITIAL_GEOJSON);
+                }
             });
 
         return () => controller.abort();
@@ -85,19 +98,32 @@ export const useAuraData = () => {
 
         fetch(`${API_BASE}/marine/thermal-anomalies`)
             .then(res => res.json())
-            .then(data => { if (data?.features) setMarineAnomalies(data.features); })
+            .then(data => { 
+                if (data?.features) setMarineAnomalies(data.features); 
+            })
             .catch(err => console.error("Marine fetch error:", err));
 
         fetch(`${API_BASE}/spatial/mutual-aid-paths`)
             .then(res => res.json())
-            .then(geoJson => { if (geoJson?.features) setRoutingGeoJson(geoJson); })
-            .catch(err => console.error("Routing fetch error:", err));
+            .then(geoJson => { 
+                if (geoJson?.type === 'FeatureCollection') {
+                    setRoutingGeoJson(geoJson);
+                } else if (geoJson?.features) {
+                    setRoutingGeoJson({ type: 'FeatureCollection', features: geoJson.features });
+                } else {
+                    setRoutingGeoJson(INITIAL_GEOJSON);
+                }
+            })
+            .catch(err => {
+                console.error("Routing fetch error:", err);
+                setRoutingGeoJson(INITIAL_GEOJSON);
+            });
     }, [airGapped, API_BASE]);
 
     // Derived GeoJSON Compilations
     const compiledSubstationGeoJson = {
         type: "FeatureCollection",
-        features: gridAssets.map(asset => ({
+        features: (gridAssets || []).map(asset => ({
             type: "Feature",
             geometry: { type: "Point", coordinates: asset.coordinates },
             properties: {
@@ -110,10 +136,10 @@ export const useAuraData = () => {
 
     const compiledMarineGeoJson = {
         type: "FeatureCollection",
-        features: marineAnomalies.map(anomaly => ({
+        features: (marineAnomalies || []).map(anomaly => ({
             type: "Feature",
             geometry: anomaly.geometry,
-            properties: { ...anomaly.properties, status: anomaly.properties?.ai_watchdog_status || 'NOMINAL' }
+            properties: { ...(anomaly.properties || {}), status: anomaly.properties?.ai_watchdog_status || 'NOMINAL' }
         }))
     };
 
@@ -149,12 +175,12 @@ export const useAuraData = () => {
             gridAssets,
             marineAnomalies,
             triageReport,
-            routingGeoJson,
-            inundationGeoJson
+            routingGeoJson // Matches explicit App.jsx data destructuring block
         },
         geoJson: {
             compiledSubstationGeoJson,
-            compiledMarineGeoJson
+            compiledMarineGeoJson,
+            inundationGeoJson // Shifted here from data bucket to safely satisfy Mapbox pipeline references
         }
     };
 };
