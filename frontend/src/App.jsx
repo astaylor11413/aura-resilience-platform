@@ -192,16 +192,19 @@ export default function App() {
           mapStyle="mapbox://styles/mapbox/dark-v11"
           style={{ width: '100%', height: '100%' }}
         >
+          {/* Inundation Vectors Polygons */}
           <Source id="inundation-data" type="geojson" data={data.inundationGeoJson}>
             <Layer {...inundationLayer} />
           </Source>
 
+          {/* Conditional Mutual Aid Path Vectors */}
           {showRoutingLayer && (
             <Source id="routing-data" type="geojson" data={data.routingGeoJson}>
               <Layer {...routingLayer} />
             </Source>
           )}
 
+          {/* Conditional Oceanographic Watchdog Telemetry Layer */}
           {showMarineLayer && geoJson.compiledMarineGeoJson?.features?.length > 0 && (
             <Source id="marine-data" type="geojson" data={geoJson.compiledMarineGeoJson}>
               <Layer {...marinePolygonLayer} />
@@ -209,6 +212,7 @@ export default function App() {
             </Source>
           )}
 
+          {/* Physics-Informed Substation Points */}
           <Source id="substation-data" type="geojson" data={geoJson.compiledSubstationGeoJson}>
             <Layer {...substationLayer} />
           </Source>
@@ -224,14 +228,6 @@ export default function App() {
             <div className={`h-3 w-3 rounded-full ${state.gridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
           </div>
-
-          <button
-            onClick={triggerResilientOrchestrationStory}
-            className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-1.5 rounded text-[10px] flex items-center gap-2 transition-colors uppercase tracking-wider"
-          >
-            <ShieldAlert size={14} /> {state.isSimulating ? "SIMULATING..." : "HURRICANE_IMPACT_SIM"}
-          </button>
-
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
               onClick={() => {
@@ -253,7 +249,7 @@ export default function App() {
                 onChange={(e) => setters.setAirGapped(e.target.checked)}
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
-              <span>AIR_GAPPED</span>
+              <span>AIR_GAPPED_MODE</span>
             </label>
             <div>
               STATE: <span className={state.gridState === 'NOMINAL' ? 'text-emerald-400' : 'text-rose-400'}>{state.gridState}</span>
@@ -263,6 +259,13 @@ export default function App() {
 
         {/* LEFT COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
+          <button
+            onClick={triggerResilientOrchestrationStory}
+            className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+          >
+            <ShieldAlert size={18} /> {state.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
+          </button>
+          
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
@@ -288,7 +291,9 @@ export default function App() {
                 const locName = m.properties?.location_name || '';
                 const tempAnomaly = m.properties?.surface_temp_anomaly_celsius || 0;
                 const geomCoords = m.geometry?.coordinates;
+
                 let localImpactBlurb = "Monitoring regional baseline indices. Elevated surface metrics signal early risks of local benthic ecosystem stress.";
+
                 if (locName.includes("Coral Bleaching Cluster A")) {
                   localImpactBlurb = `A +${tempAnomaly}°C spike here accelerates severe coral bleaching across nearshore reefs. For locals, this threatens critical artisanal fishing grounds and degrades the natural storm barriers shielding the Kingston shoreline.`;
                 } else if (locName.includes("Pedro Bank")) {
@@ -296,6 +301,7 @@ export default function App() {
                 } else if (locName.includes("Algal Stress Hotspot")) {
                   localImpactBlurb = `Sustained temperatures +${tempAnomaly}°C above historical norms trigger rapid toxic microalgae spikes on the shallow shelf. This risks bioaccumulation issues in shellfish maps and harms beach infrastructure groups.`;
                 }
+
                 return (
                   <details
                     key={i}
@@ -338,8 +344,10 @@ export default function App() {
           </HudPanel>
         </div>
 
+        {/* CENTER */}
         <div className="hidden md:block md:col-span-6" />
 
+        {/* RIGHT COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
           <HudPanel title="GNN Grid Analyzer">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
@@ -388,6 +396,7 @@ export default function App() {
           </HudPanel>
         </div>
 
+        {/* TRANSCRIBER */}
         <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
           <HudPanel title="Logistics Transcriber">
             <div className="flex gap-2">
