@@ -33,7 +33,7 @@ const marinePolygonLayer = {
   id: 'marine-anomaly-polygon-layer',
   type: 'fill',
   paint: {
-    'fill-color': '#f59e0b',       // amber-500
+    'fill-color': '#f59e0b',        // amber-500
     'fill-opacity': 0.15,
     'fill-outline-color': '#fbbf24' // amber-400
   }
@@ -219,7 +219,7 @@ export default function App() {
       </div>
 
       {/* RESPONSIVE HUD FOREGROUND */}
-      <div className="relative md:absolute inset-0 z-30 pt-[42vh] md:pt-0 p-4 md:p-6 pointer-events-none grid grid-cols-1 md:grid-cols-12 md:grid-rows-6 gap-2 md:overflow-visible">
+      <div className="relative md:absolute inset-0 z-30 pt-[42vh] md:pt-0 p-4 md:p-6 pointer-events-none grid grid-cols-1 md:grid-cols-12 md:grid-rows-[auto_1fr_auto] h-full gap-4">
 
         {/* HEADER BAR */}
         <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
@@ -258,7 +258,7 @@ export default function App() {
         </header>
 
         {/* LEFT COLUMN: Controls & Logistics */}
-        <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
+        <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
           {/* RESTORED HURRICANE SIMULATOR BUTTON */}
           <button
             onClick={triggerResilientOrchestrationStory}
@@ -346,10 +346,10 @@ export default function App() {
         </div>
 
         {/* CENTER COLUMN PLACEHOLDER */}
-        <div className="hidden md:block md:col-span-6 md:row-span-5" />
+        <div className="hidden md:block md:col-span-6" />
 
         {/* RIGHT COLUMN: Telemetry & Analyzers */}
-        <div className="col-span-1 md:col-span-3 md:row-span-5 flex flex-col gap-4 pointer-events-auto">
+        <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
 
           {/* GNN GRID ANALYZER WITH MAP INTERACTION */}
           <HudPanel title="GNN Grid Analyzer">
@@ -398,8 +398,9 @@ export default function App() {
             </div>
           </HudPanel>
         </div>
+
         {/* LOGISTICS TRANSCRIBER */}
-        <div className="col-span-1 md:col-span-12 row-start-6 mt-auto z-[60] pointer-events-auto">
+        <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
           <HudPanel title="Logistics Transcriber">
             <div className="flex gap-2">
               <textarea
