@@ -233,7 +233,7 @@ export default function App() {
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {data.gridAssets.map(asset => (
                 <details key={asset.id} className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group">
-                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center">
+                  <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
                     <span>{asset.name}</span>
                     <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
                   </summary>
@@ -246,17 +246,54 @@ export default function App() {
             </div>
           </HudPanel>
 
+          {/* DYNAMIC EXPANDABLE OCEANOGRAPHIC WATCHDOG PANEL */}
           <HudPanel title="Oceanographic Watchdog">
-            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-              {data.marineAnomalies.map((m, i) => (
-                <div key={i} className="text-[10px] p-2 border-l-2 border-teal-500 bg-slate-900/50 rounded-r flex justify-between items-center font-mono">
-                  <div>
-                    <div className="font-bold text-slate-200">{m.properties?.location_name || 'Unknown Hub'}</div>
-                    <div className="text-[9px] text-slate-500">Watchdog: {m.properties?.ai_watchdog_status}</div>
-                  </div>
-                  <div className="text-teal-400">+{m.properties?.surface_temp_anomaly_celsius || 0}°C</div>
-                </div>
-              ))}
+            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+              {data.marineAnomalies.map((m, i) => {
+                const locName = m.properties?.location_name || '';
+                const tempAnomaly = m.properties?.surface_temp_anomaly_celsius || 0;
+
+                // Dynamic impact assessment assignment mapping against active database locations
+                let localImpactBlurb = "Monitoring regional baseline indices. Elevated surface metrics signal early risks of local benthic ecosystem stress.";
+
+                if (locName.includes("Coral Bleaching Cluster A")) {
+                  localImpactBlurb = `A +${tempAnomaly}°C spike here accelerates severe coral bleaching across nearshore reefs. For locals, this threatens critical artisanal fishing grounds and degrades the natural storm barriers shielding the Kingston shoreline.`;
+                } else if (locName.includes("Pedro Bank")) {
+                  localImpactBlurb = `This massive +${tempAnomaly}°C anomaly in the pelagic gyre traps heavy sargassum biomass. Drifting fields choke down south-coast harbors, drop marine oxygen values, and disrupt active commercial shipping links.`;
+                } else if (locName.includes("Algal Stress Hotspot")) {
+                  localImpactBlurb = `Sustained temperatures +${tempAnomaly}°C above historical norms trigger rapid toxic microalgae spikes on the shallow shelf. This risks bioaccumulation issues in shellfish maps and harms beach infrastructure groups.`;
+                }
+
+                return (
+                  <details key={i} className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group">
+                    <summary className="text-[10px] font-mono list-none flex justify-between items-center select-none">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-slate-200 group-hover:text-teal-400 transition-colors">
+                          {locName || 'Anomalous Subsystem'}
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-sans">
+                          Watchdog: {m.properties?.ai_watchdog_status || 'MONITOR'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-teal-400 font-bold">+{tempAnomaly}°C</span>
+                        <span className="text-slate-500 group-open:rotate-180 transition-transform text-[8px]">▼</span>
+                      </div>
+                    </summary>
+                    <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-sans leading-relaxed space-y-1.5">
+                      <div className="text-[9px] font-mono uppercase tracking-wider text-teal-500 font-bold">
+                        Community & Ecosystem Impact:
+                      </div>
+                      <p className="text-slate-300">
+                        {localImpactBlurb}
+                      </p>
+                      <div className="text-[9px] font-mono text-slate-500 pt-0.5">
+                        Microplastic Density: {m.properties?.microplastic_density_ppm || 0} ppm
+                      </div>
+                    </div>
+                  </details>
+                );
+              })}
             </div>
           </HudPanel>
         </div>
