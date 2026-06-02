@@ -240,6 +240,28 @@ export default function App() {
               </button>
             )}
           </HudPanel>
+          <HudPanel title="Logistics & Mutual Aid">
+            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+              {data.routingGeoJson.features.map((route, i) => (
+                <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-emerald-400 font-bold">{route.properties.origin_kitchen}</span>
+                    <span className="text-slate-500">→</span>
+                    <span className="text-purple-400 font-bold">{route.properties.destination_shelter}</span>
+                  </div>
+                  <div className="text-slate-400 flex justify-between">
+                    <span>Status: </span>
+                    <span className={route.properties.urgency === 'CRITICAL' ? 'text-rose-400' : 'text-emerald-300'}>
+                      {route.properties.urgency}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-slate-600 mt-1 italic">
+                    Permit: {route.properties.permit_verification}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </HudPanel>
 
           <HudPanel title="Logistics Transcriber">
             <textarea
