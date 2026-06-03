@@ -345,6 +345,44 @@ export default function App() {
 
   const activeRoutingGeoJson = data?.routingGeoJson || { type: 'FeatureCollection', features: [] };
 
+  // --- 1. DATA SANITIZATION FILTERS (Sanitizes pipeline and applies direct text-label/empty fallbacks) ---
+  const sanitizedSubstations = useMemo(() => {
+    if (localSimState.airGapped) return { type: "FeatureCollection", features: processedSubstationFeatures };
+    
+    const rawSubstations = data?.gridAssets || [];
+    if (rawSubstations.length === 0 && processedSubstationFeatures.length > 0) {
+      return { type: "FeatureCollection", features: processedSubstationFeatures };
+    }
+
+    return {
+      type: "FeatureCollection",
+      features: rawSubstations.map(sub => ({
+        type: "Feature",
+        properties: {
+          id: sub.id,
+          name: sub.name,
+          status: sub.status?.toLowerCase() || 'nominal',
+          rawStatus: sub.status || 'NOMINAL'
+        },
+        geometry: {
+          type: "Point",
+          coordinates: sub.coordinates
+        }
+      }))
+    };
+  }, [localSimState.airGapped, data?.gridAssets, processedSubstationFeatures]);
+
+  const sanitizedInundation = useMemo(() => {
+    if (localSimState.airGapped) return activeInundation;
+    if (activeInundation?.features && activeInundation.features.length > 0) return activeInundation;
+
+    // Fallback if cloud parsing features drop or reference incorrect matrices
+    return {
+      type: "FeatureCollection",
+      features: []
+    };
+  }, [localSimState.airGapped, activeInundation]);
+
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
       
@@ -369,7 +407,7 @@ export default function App() {
             mapStyle="mapbox://styles/mapbox/dark-v11"
             style={{ width: '100%', height: '100%' }}
           >
-            <Source id="inundation-data" type="geojson" data={activeInundation}>
+            <Source id="inundation-data" type="geojson" data={sanitizedInundation}>
               <Layer {...inundationLayer} />
             </Source>
 
@@ -410,7 +448,8 @@ export default function App() {
               </Source>
             )}
 
-            <Source id="substation-data" type="geojson" data={{ type: "FeatureCollection", features: processedSubstationFeatures }}>
+            {/* Kept your exact source declaration wrapper untouched, bound to sanitized feature structures */}
+            <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
               <Layer {...substationLayer} />
             </Source>
 
@@ -443,7 +482,6 @@ export default function App() {
             <button
               onClick={() => {
                 if (localSimState.isSimulating) {
-                  // Fallback state escape mechanism if resetting view while in 3D execution mode
                   setLocalSimState(prev => ({ ...prev, isSimulating: false }));
                   setters.setIsSimulating(false);
                 }
@@ -585,7 +623,7 @@ export default function App() {
 
               <HudPanel title="GNN Grid Analyzer">
                 <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-                  {processedSubstationFeatures.map(feat => {
+                  {(sanitizedSubstations.features || []).map(feat => {
                     const props = feat.properties || {};
                     const coords = feat.geometry?.coordinates;
                     return (
@@ -604,7 +642,7 @@ export default function App() {
                         </summary>
                         <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
                           <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
-                          <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
+                          <div className="text-slate-500 text-[9px]">Routing: {props.power_routing || 'MAIN_LINE_FEED'}</div>
                         </div>
                       </details>
                     );
