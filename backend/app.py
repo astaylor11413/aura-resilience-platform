@@ -293,6 +293,8 @@ def transcribe_and_triage_report():
 def generate_dialect_broadcast():
     data = request.get_json() or {}
     text_to_speak = data.get("text", "Warning: Move inland.")
+    stylized_text = text_to_speak.replace("ACTIVATE PROTOCOL ", "Alert: ")
+    stylized_text = f"Attention across regions. {stylized_text}"
     
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
     CARIBBEAN_VOICE_ID = "eRcsJdPMOM0mtGC03ul7"
@@ -305,12 +307,12 @@ def generate_dialect_broadcast():
     
     try:
         res = requests.post(url, json={
-            "text": text_to_speak, 
+            "text": stylized_text,  # <-- Send the stylized version with natural cadence
             "model_id": "eleven_multilingual_v2", 
             "voice_settings": {
-                "stability": 0.45,
-                "similarity_boost": 0.85,
-                "style": 0.15,
+                "stability": 0.40,       # Dropped to 0.40 to allow more expressive inflection variations
+                "similarity_boost": 0.88, # Slightly higher boost forces attachment to custom voice properties
+                "style": 0.25,            # Lifted slightly to push the model to prioritize stylistic accents
                 "use_speaker_boost": True
             }}, headers=headers, stream=True)
         if res.status_code == 200:
