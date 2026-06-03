@@ -277,19 +277,23 @@ export default function App() {
             body: JSON.stringify({ text: resData.actionable_tactical_playbook })
           });
 
-          // Read binary stream chunk and construct player source
+          if (!audioResponse.ok) {
+            // This line extracts the actual error message from the backend
+            const errorText = await audioResponse.text();
+            throw new Error(`Server Error ${audioResponse.status}: ${errorText}`);
+          }
+
           const audioBlob = await audioResponse.blob();
           const audioUrl = URL.createObjectURL(audioBlob);
           const audio = new Audio(audioUrl);
           await audio.play();
 
         } catch (audioErr) {
-          const errorResponse = await audioResponse.text(); // Get the actual error message
-          console.error("--- BACKEND REJECTED THE REQUEST ---");
-          console.error("Error Status:", audioResponse.status);
-          console.error("Error Detail:", errorResponse);
+          // This will now print the REAL reason the backend is failing
+          console.error("--- THE TRUTH BEHIND THE FAILURE ---");
+          console.error(audioErr.message);
 
-          // Now trigger the fallback
+          // Fallback
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(new SpeechSynthesisUtterance(resData.actionable_tactical_playbook));
         }
