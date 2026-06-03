@@ -175,12 +175,12 @@ export const useAuraData = () => {
             gridAssets,
             marineAnomalies,
             triageReport,
-            routingGeoJson // Matches explicit App.jsx data destructuring block
+            routingGeoJson
         },
         geoJson: {
             compiledSubstationGeoJson,
             compiledMarineGeoJson,
-            inundationGeoJson // Shifted here from data bucket to safely satisfy Mapbox pipeline references
+            inundationGeoJson
         }
     };
 };

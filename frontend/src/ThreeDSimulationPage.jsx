@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Map, { Source, Layer } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -11,24 +11,14 @@ const extrusionLayerStyle = {
   paint: {
     'fill-extrusion-color': '#3b82f6',
     'fill-extrusion-opacity': 0.6,
-    // Physically lift the water polygon using the SLR meters argument
+    // Physically lift the water polygon using the SLR meters argument or properties
     'fill-extrusion-height': ['coalesce', ['get', 'depth_meters'], 1.5], 
     'fill-extrusion-base': 0
   }
 };
 
-export default function ThreeDSimulationPage({ simulationArgs }) {
+export default function ThreeDSimulationPage({ geoData }) {
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [geoData, setGeoData] = useState(null);
-
-  // Safely fetch or generate your simulation layers when the component mounts
-  useEffect(() => {
-    // For fetching simulation data via API endpoints:
-    fetch(`https://aura-resilience-platform-qa.onrender.com/api/v1/hazard/inundation?slr_meters=${simulationArgs.slrMeters}`)
-      .then(res => res.json())
-      .then(data => setGeoData(data))
-      .catch(err => console.error("Failed to load 3D simulation data layers:", err));
-  }, [simulationArgs.slrMeters]);
 
   return (
     <div className="w-full h-full relative">
@@ -56,7 +46,7 @@ export default function ThreeDSimulationPage({ simulationArgs }) {
         />
 
         {/* Render 3D data layers only when the style canvas AND data properties are fully ready */}
-        {mapLoaded && geoData && (
+        {mapLoaded && geoData && geoData.features && (
           <Source id="simulation-inundation-source" type="geojson" data={geoData}>
             <Layer {...extrusionLayerStyle} />
           </Source>

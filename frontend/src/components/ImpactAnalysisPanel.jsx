@@ -3,7 +3,12 @@ import React, { useState } from 'react';
 export function ImpactAnalysisPanel({ 
   currentTimeStep, 
   onTimeStepChange, 
-  structuralStats, 
+  structuralStats = {
+    carsRisk: 0,
+    suvRisk: 0,
+    structuralFailure: 0,
+    historicalDepthProfile: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  }, 
   onClose 
 }) {
   const [selectedBuilding, setSelectedBuilding] = useState(null);
@@ -40,14 +45,14 @@ export function ImpactAnalysisPanel({
       <div className="bg-slate-900/60 p-3 rounded-lg border border-white/5 space-y-2">
         <div className="flex justify-between items-center text-[10px]">
           <span className="text-slate-400 uppercase tracking-wider">Temporal Matrix Step:</span>
-          <span className="text-cyan-400 font-bold">{timeSlices[currentTimeStep]}</span>
+          <span className="text-cyan-400 font-bold">{timeSlices[currentTimeStep] || timeSlices[0]}</span>
         </div>
         <input 
           type="range" 
           min="0" 
           max="11" 
           value={currentTimeStep} 
-          onChange={(e) => onTimeStepChange(parseInt(e.target.value))}
+          onChange={(e) => onTimeStepChange(parseInt(e.target.value, 10))}
           className="w-full accent-rose-500 h-1 bg-slate-800 rounded-lg cursor-pointer"
         />
         <div className="flex justify-between text-[8px] text-slate-500">
@@ -92,7 +97,7 @@ export function ImpactAnalysisPanel({
               onClick={() => onTimeStepChange(idx)}
             >
               {/* Tooltip on hover */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-slate-900 text-white font-mono text-[7px] py-0.5 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap mb-1 border border-white/10">
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-slate-900 text-white font-mono text-[7px] py-0.5 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap mb-1 border border-white/10 zonal-tooltip">
                 {depth.toFixed(2)}m
               </div>
             </div>

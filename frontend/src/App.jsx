@@ -165,14 +165,6 @@ export default function App() {
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
 
-  // Renamed local state to avoid collision with hook destructuring
-  const [localSimState, setLocalSimState] = useState({
-    windSpeed: 0,
-    slrMeters: 0,
-    isSimulating: false,
-    airGapped: false
-  });
-
   // Model Warm-up
   useEffect(() => {
     async function prepareEdge() {
@@ -186,16 +178,16 @@ export default function App() {
     prepareEdge();
   }, []);
 
-  // Compute metrics combining your temporal profile metrics and structural footprints
+  // Compute metrics combining temporal profile metrics and structural footprints
   const structuralStats = useMemo(() => {
     const baseCurve = [0.08, 0.22, 0.41, 0.58, 0.72, 0.85, 0.93, 1.02, 1.08, 1.12, 1.15, 1.18];
-    const multiplier = (localSimState.windSpeed / 90) + (localSimState.slrMeters * 0.2);
+    const multiplier = (globalState.windSpeed / 90) + (globalState.slrMeters * 0.2);
     const activeProfile = baseCurve.map(depth => depth * (multiplier > 0 ? multiplier : 1));
     const currentDepth = activeProfile[currentTimeStep];
 
-    const criticalBreached = localSimState.windSpeed > 75 ? 3 : localSimState.windSpeed > 55 ? 1 : 0;
-    const commercialBreached = localSimState.windSpeed > 85 ? 6 : localSimState.windSpeed > 60 ? 2 : 0;
-    const highRiskPercent = Math.min(100, Math.round((localSimState.windSpeed * 0.8) + (localSimState.slrMeters * 5)));
+    const criticalBreached = globalState.windSpeed > 75 ? 3 : globalState.windSpeed > 55 ? 1 : 0;
+    const commercialBreached = globalState.windSpeed > 85 ? 6 : globalState.windSpeed > 60 ? 2 : 0;
+    const highRiskPercent = Math.min(100, Math.round((globalState.windSpeed * 0.8) + (globalState.slrMeters * 5)));
 
     return {
       historicalDepthProfile: activeProfile,
@@ -208,7 +200,7 @@ export default function App() {
       commercialBreached,
       highRiskPercent
     };
-  }, [currentTimeStep, localSimState.windSpeed, localSimState.slrMeters]);
+  }, [currentTimeStep, globalState.windSpeed, globalState.slrMeters]);
 
   const usaStructuresLayerConfig = useMemo(() => {
     const depthFactor = structuralStats.historicalDepthProfile[currentTimeStep];
@@ -241,7 +233,6 @@ export default function App() {
   };
 
   const triggerResilientOrchestrationStory = () => {
-    setLocalSimState(prev => ({ ...prev, isSimulating: true, windSpeed: 78, slrMeters: 2.0 }));
     setters.setIsSimulating(true);
     setters.setWindSpeed(78);
     setters.setSlrMeters(2.0);
@@ -250,7 +241,7 @@ export default function App() {
     const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
-    const marineSource = localSimState.airGapped ? runLocalMarineTelemetry() : (data?.marineAnomalies || []);
+    const marineSource = globalState.airGapped ? runLocalMarineTelemetry() : (data?.marineAnomalies || []);
     const criticalNode = Array.isArray(marineSource) ? marineSource.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL")) : null;
     if (criticalNode?.geometry?.coordinates) {
       const [lng, lat] = criticalNode.geometry.coordinates;
@@ -262,9 +253,9 @@ export default function App() {
     if (!reportText.trim()) return;
     setIsProcessing(true);
 
-    if (localSimState.airGapped) {
+    if (globalState.airGapped) {
       try {
-        const result = await runLocalTriage(reportText, localSimState);
+        const result = await runLocalTriage(reportText, globalState);
         alert(`${result.actionable_tactical_playbook}`);
         setters.setActiveThreatIndex(result.matched_node_threat_index);
       } catch (err) {
@@ -278,7 +269,7 @@ export default function App() {
     try {
       const formData = new FormData();
       formData.append('text', reportText);
-      formData.append('air_gapped', localSimState.airGapped ? 'true' : 'false');
+      formData.append('air_gapped', globalState.airGapped ? 'true' : 'false');
 
       const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
         method: 'POST',
@@ -300,15 +291,15 @@ export default function App() {
   };
 
   // Resolve active telemetry datasets based on isolation mode
-  const activeInundation = localSimState.airGapped
-    ? runLocalInundation(localSimState.slrMeters)
+  const activeInundation = globalState.airGapped
+    ? runLocalInundation(globalState.slrMeters)
     : (geoJson?.inundationGeoJson || { type: 'FeatureCollection', features: [] });
 
   let processedSubstationFeatures = [];
   let calculatedGridState = 'NOMINAL';
 
-  if (localSimState.airGapped) {
-    const localGridResult = runLocalGridSimulation(localSimState.windSpeed);
+  if (globalState.airGapped) {
+    const localGridResult = runLocalGridSimulation(globalState.windSpeed);
     calculatedGridState = localGridResult?.grid_state || 'NOMINAL';
     const localAssets = localGridResult?.assets || [];
     processedSubstationFeatures = localAssets.map(a => ({
@@ -339,15 +330,15 @@ export default function App() {
     });
   }
 
-  const activeMarineFeatures = localSimState.airGapped
+  const activeMarineFeatures = globalState.airGapped
     ? runLocalMarineTelemetry()
     : (geoJson?.compiledMarineGeoJson?.features || []);
 
   const activeRoutingGeoJson = data?.routingGeoJson || { type: 'FeatureCollection', features: [] };
 
-  // --- 1. DATA SANITIZATION FILTERS (Sanitizes pipeline and applies direct text-label/empty fallbacks) ---
+  // --- DATA SANITIZATION FILTERS ---
   const sanitizedSubstations = useMemo(() => {
-    if (localSimState.airGapped) return { type: "FeatureCollection", features: processedSubstationFeatures };
+    if (globalState.airGapped) return { type: "FeatureCollection", features: processedSubstationFeatures };
     
     const rawSubstations = data?.gridAssets || [];
     if (rawSubstations.length === 0 && processedSubstationFeatures.length > 0) {
@@ -370,30 +361,29 @@ export default function App() {
         }
       }))
     };
-  }, [localSimState.airGapped, data?.gridAssets, processedSubstationFeatures]);
+  }, [globalState.airGapped, data?.gridAssets, processedSubstationFeatures]);
 
   const sanitizedInundation = useMemo(() => {
-    if (localSimState.airGapped) return activeInundation;
+    if (globalState.airGapped) return activeInundation;
     if (activeInundation?.features && activeInundation.features.length > 0) return activeInundation;
 
-    // Fallback if cloud parsing features drop or reference incorrect matrices
     return {
       type: "FeatureCollection",
       features: []
     };
-  }, [localSimState.airGapped, activeInundation]);
+  }, [globalState.airGapped, activeInundation]);
 
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
       
       {/* MAP UNDERLAY */}
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
-        {localSimState.isSimulating ? (
+        {globalState.isSimulating ? (
           /* SWAPPED MAP VIEWPORT: 3D Esri / Satellite Terrain Engine */
           <ThreeDSimulationPage 
             simulationArgs={{
-              slrMeters: localSimState.slrMeters,
-              windSpeed: localSimState.windSpeed,
+              slrMeters: globalState.slrMeters,
+              windSpeed: globalState.windSpeed,
               threatIndex: globalState.activeThreatIndex
             }}
           />
@@ -448,7 +438,6 @@ export default function App() {
               </Source>
             )}
 
-            {/* Kept your exact source declaration wrapper untouched, bound to sanitized feature structures */}
             <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
               <Layer {...substationLayer} />
             </Source>
@@ -472,17 +461,16 @@ export default function App() {
             <div className={`h-3 w-3 rounded-full ${calculatedGridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${localSimState.airGapped ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+              <div className={`h-2 w-2 rounded-full ${globalState.airGapped ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
               <span className="text-[10px] font-mono uppercase text-slate-400">
-                {localSimState.airGapped ? `[MODE: EDGE_ISOLATED | AI: ${modelReady ? 'READY' : 'LOADING'}]` : "[MODE: CLOUD_SYNC]"}
+                {globalState.airGapped ? `[MODE: EDGE_ISOLATED | AI: ${modelReady ? 'READY' : 'LOADING'}]` : "[MODE: CLOUD_SYNC]"}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
               onClick={() => {
-                if (localSimState.isSimulating) {
-                  setLocalSimState(prev => ({ ...prev, isSimulating: false }));
+                if (globalState.isSimulating) {
                   setters.setIsSimulating(false);
                 }
                 mapRef.current?.flyTo({
@@ -499,8 +487,8 @@ export default function App() {
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={!!localSimState.airGapped}
-                onChange={(e) => setLocalSimState(prev => ({ ...prev, airGapped: e.target.checked }))}
+                checked={!!globalState.airGapped}
+                onChange={(e) => setters.setAirGapped(e.target.checked)}
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
               <span>AIR_GAPPED_MODE</span>
@@ -515,12 +503,11 @@ export default function App() {
               onClick={triggerResilientOrchestrationStory}
               className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors mb-2"
             >
-              <ShieldAlert size={18} /> {localSimState.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
+              <ShieldAlert size={18} /> {globalState.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
             </button>
             <button
               onClick={() => {
                 if (window.confirm("CRITICAL: This will purge all local session data and reset AURA to factory settings. Continue?")) {
-                  setLocalSimState(prev => ({ ...prev, isSimulating: false }));
                   setters.resetAuraState();
                 }
               }}
@@ -532,12 +519,12 @@ export default function App() {
 
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{localSimState.windSpeed} MPH</span></div>
-              <input type="range" min="10" max="100" value={localSimState.windSpeed} onChange={(e) => setLocalSimState(prev => ({ ...prev, windSpeed: Number(e.target.value) }))} className="w-full accent-emerald-400 cursor-pointer" />
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{globalState.windSpeed} MPH</span></div>
+              <input type="range" min="10" max="100" value={globalState.windSpeed} onChange={(e) => setters.setWindSpeed(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
             </div>
             <div className="space-y-1 pt-2">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{localSimState.slrMeters}m</span></div>
-              <input type="range" min="0" max="3" step="0.5" value={localSimState.slrMeters} onChange={(e) => setLocalSimState(prev => ({ ...prev, slrMeters: Number(e.target.value) }))} className="w-full accent-emerald-400 cursor-pointer" />
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{globalState.slrMeters}m</span></div>
+              <input type="range" min="0" max="3" step="0.5" value={globalState.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
             </div>
             {globalState.activeThreatIndex !== null && (
               <button
@@ -570,7 +557,7 @@ export default function App() {
                     key={i}
                     className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                     onToggle={(e) => {
-                      if (e.currentTarget.open && geomCoords && !localSimState.isSimulating) {
+                      if (e.currentTarget.open && geomCoords && !globalState.isSimulating) {
                         handlePanToTarget(geomCoords[0], geomCoords[1]);
                       }
                     }}
@@ -611,7 +598,8 @@ export default function App() {
                   <p>Steady-state climate vectors active.</p>
                   <button
                     onClick={() => {
-                      setLocalSimState(prev => ({ ...prev, isSimulating: true, windSpeed: 90 }));
+                      setters.setIsSimulating(true);
+                      setters.setWindSpeed(90);
                       setShowImpactAnalysis(true);
                     }}
                     className="w-full py-1.5 bg-rose-600 font-bold rounded uppercase tracking-wider text-white hover:bg-rose-500 transition-colors cursor-pointer pointer-events-auto text-[9px]"
@@ -631,7 +619,7 @@ export default function App() {
                         key={props.id}
                         className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                         onToggle={(e) => {
-                          if (e.currentTarget.open && coords && !localSimState.isSimulating) {
+                          if (e.currentTarget.open && coords && !globalState.isSimulating) {
                             handlePanToTarget(coords[0], coords[1]);
                           }
                         }}
@@ -682,7 +670,7 @@ export default function App() {
               structuralStats={structuralStats}
               onClose={() => {
                 setShowImpactAnalysis(false);
-                setLocalSimState(prev => ({ ...prev, isSimulating: false }));
+                setters.setIsSimulating(false);
               }}
             />
           )}
@@ -695,13 +683,13 @@ export default function App() {
               <textarea
                 value={reportText}
                 onChange={(e) => setReportText(e.target.value)}
-                placeholder={modelReady || !localSimState.airGapped ? "Enter incident report (e.g., 'Palisadoes line is underwater down south')..." : "Loading AI model..."}
-                disabled={!modelReady && localSimState.airGapped}
+                placeholder={modelReady || !globalState.airGapped ? "Enter incident report (e.g., 'Palisadoes line is underwater down south')..." : "Loading AI model..."}
+                disabled={!modelReady && globalState.airGapped}
                 className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
               />
               <button
                 onClick={handleProcessTransmission}
-                disabled={isProcessing || (!modelReady && localSimState.airGapped)}
+                disabled={isProcessing || (!modelReady && globalState.airGapped)}
                 className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
               >
                 {isProcessing ? 'Processing...' : 'Process'}
