@@ -269,8 +269,6 @@ export default function App() {
           setters.setActiveThreatIndex(resData.matched_node_threat_index);
         }
         
-        alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
-        
         // === SECOND HOP: SEND TO ELEVENLABS ACCENT ROUTE ===
         try {
           const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
@@ -291,6 +289,9 @@ export default function App() {
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(new SpeechSynthesisUtterance(resData.actionable_tactical_playbook));
         }
+        
+        alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
+        
       }
     } catch (err) {
       console.error('Transmission processing failure:', err);
