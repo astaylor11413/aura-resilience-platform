@@ -299,8 +299,21 @@ def transcribe_and_triage_report():
 def generate_dialect_broadcast():
     data = request.get_json() or {}
     text_to_speak = data.get("text", "Warning: Move inland.")
-    stylized_text = text_to_speak.replace("ACTIVATE PROTOCOL ", "Alert: ")
-    stylized_text = f"Attention across regions. {stylized_text}"
+    
+    # Check if the incoming string is stuck on old clinical textbook structures
+    text_lower = text_to_speak.lower()
+    if "structural integrity" in text_lower or "structural damage" in text_lower:
+        stylized_text = "Hear dis now: The substation structures dem compromise and the boundary breach severe! Look sharp and secure the framework!"
+    elif "flooding" in text_lower or "amphibious" in text_lower:
+        stylized_text = "Attention across the coastline! Big storm surge a come and the water dem heavy down south. Close the sea-wall gates right now!"
+    elif "grid" in text_lower or "power" in text_lower:
+        stylized_text = "Red alert! The main transmission lines dem drop and the power grid mash up completely. Switch over to the microgrid now!"
+    else:
+        # If it's already a clean Patois playbook string from the report endpoint, use it directly
+        stylized_text = text_to_speak.replace("ACTIVATE PROTOCOL ", "Alert: ")
+
+    # Add a smooth regional voice anchor tag at the start of the audio generation
+    final_payload_text = f"Attention across regions. {stylized_text}"
     
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
     CARIBBEAN_VOICE_ID = "eRcsJdPMOM0mtGC03ul7"
@@ -313,12 +326,12 @@ def generate_dialect_broadcast():
     
     try:
         res = requests.post(url, json={
-            "text": stylized_text,  # <-- Send the stylized version with natural cadence
+            "text": final_payload_text,  # <-- Patois text strings trigger natural accent inflections smoothly
             "model_id": "eleven_multilingual_v2", 
             "voice_settings": {
-                "stability": 0.35,       # Dropped to 0.40 to allow more expressive inflection variations
-                "similarity_boost": 0.88, # Slightly higher boost forces attachment to custom voice properties
-                "style": 0.25,            # Lifted slightly to push the model to prioritize stylistic accents
+                "stability": 0.35,        # Dropped to allow highly expressive cadence variations
+                "similarity_boost": 0.88, 
+                "style": 0.25,            
                 "use_speaker_boost": True
             }}, headers=headers, stream=True)
         if res.status_code == 200:
@@ -329,7 +342,7 @@ def generate_dialect_broadcast():
             return jsonify({"info": "ElevenLabs API Error. Falling back to browser audio."}), 200
     except Exception as e: 
         return jsonify({"error": str(e), "info": "Fallback triggered"}), 500
-
+    
 # 7. Layer 3 Alignment: Nearest-Neighbor Euclidean Spatial Route Compiler
 @app.route('/api/v1/spatial/mutual-aid-paths', methods=['GET'])
 def calculate_optimal_routing():
