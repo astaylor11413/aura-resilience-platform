@@ -356,7 +356,7 @@ export default function App() {
         <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
           <div className="flex items-center gap-3">
             <div className={`h-3 w-3 rounded-full ${calculatedGridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
-            <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Status</h1>
+            <h1 className="text-sm font-bold tracking-widest text-white uppercase">Status</h1>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
