@@ -1,4 +1,5 @@
-# AURA Resilience Platform
+# AURA Resilience Platform (Basic Version)
+> **Note:** This version focuses on core air-gapped operations, edge-triage modeling, and high-fidelity ElevenLabs voice broadcast functionality. For advanced 3D environmental modeling and flood simulations, switch to the `qa01` branch.
 
 Aura is a full-stack climate resilience platform designed to safeguard coastal populations, island networks, and urban food grids. It combines real-time environmental telemetry, predictive critical infrastructure modeling, and an AI-driven, dialect-aware logistics engine.
 
