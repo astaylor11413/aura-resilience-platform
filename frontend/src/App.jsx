@@ -164,6 +164,46 @@ export default function App() {
     });
   };
 
+  // Determine Data Sources based on Mode to map substation references correctly
+  const activeInundation = state.airGapped
+    ? runLocalInundation(state.slrMeters)
+    : (geoJson?.inundationGeoJson || { type: 'FeatureCollection', features: [] });
+
+  let processedSubstationFeatures = [];
+  let calculatedGridState = 'NOMINAL';
+
+  if (state.airGapped) {
+    const localGridResult = runLocalGridSimulation(state.windSpeed);
+    calculatedGridState = localGridResult?.grid_state || 'NOMINAL';
+    const localAssets = localGridResult?.assets || [];
+    processedSubstationFeatures = localAssets.map(a => ({
+      type: "Feature",
+      properties: {
+        id: a.id,
+        name: a.name,
+        rawStatus: a.status,
+        status: a.status?.toLowerCase().includes('critical') ? 'critical' : 'nominal',
+        power_routing: a.power_routing
+      },
+      geometry: { type: "Point", coordinates: a.coordinates }
+    }));
+  } else {
+    calculatedGridState = state.gridState || 'NOMINAL';
+    const cloudGeoJson = geoJson?.compiledSubstationGeoJson || { type: 'FeatureCollection', features: [] };
+    const rawAssetsList = data?.gridAssets || [];
+
+    processedSubstationFeatures = (cloudGeoJson.features || []).map(f => {
+      const liveAssetMatch = rawAssetsList.find(a => a.id === f.properties?.id);
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          power_routing: liveAssetMatch ? liveAssetMatch.power_routing : 'MAIN_LINE_FEED'
+        }
+      };
+    });
+  }
+
   const triggerResilientOrchestrationStory = () => {
     setters.setIsSimulating(true);
     setters.setWindSpeed(78);
@@ -173,12 +213,23 @@ export default function App() {
     const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
-    const marineSource = state.airGapped ? runLocalMarineTelemetry() : (data?.marineAnomalies || []);
-    const criticalNode = Array.isArray(marineSource) ? marineSource.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL")) : null;
-    if (criticalNode?.geometry?.coordinates) {
-      const [lng, lat] = criticalNode.geometry.coordinates;
-      mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, essential: true });
-    }
+    // Dynamic Zoom Action: Scan grid infrastructure for the critical target location
+    setTimeout(() => {
+      const palisadoesNode = processedSubstationFeatures.find(f => 
+        String(f.properties?.name || '').toLowerCase().includes('palisadoes')
+      );
+
+      if (palisadoesNode?.geometry?.coordinates) {
+        const [lng, lat] = palisadoesNode.geometry.coordinates;
+        mapRef.current?.flyTo({ 
+          center: [lng, lat], 
+          zoom: 13.5, 
+          pitch: 45, 
+          essential: true,
+          duration: 2500 
+        });
+      }
+    }, 100);
   };
 
   const handleProcessTransmission = async () => {
@@ -221,47 +272,6 @@ export default function App() {
       setIsProcessing(false);
     }
   };
-
-  // Determine Data Sources based on Mode
-  const activeInundation = state.airGapped
-    ? runLocalInundation(state.slrMeters)
-    : (geoJson?.inundationGeoJson || { type: 'FeatureCollection', features: [] });
-
-  // Normalized Grid Resolution Mapping
-  let processedSubstationFeatures = [];
-  let calculatedGridState = 'NOMINAL';
-
-  if (state.airGapped) {
-    const localGridResult = runLocalGridSimulation(state.windSpeed);
-    calculatedGridState = localGridResult?.grid_state || 'NOMINAL';
-    const localAssets = localGridResult?.assets || [];
-    processedSubstationFeatures = localAssets.map(a => ({
-      type: "Feature",
-      properties: {
-        id: a.id,
-        name: a.name,
-        rawStatus: a.status,
-        status: a.status?.toLowerCase().includes('critical') ? 'critical' : 'nominal',
-        power_routing: a.power_routing
-      },
-      geometry: { type: "Point", coordinates: a.coordinates }
-    }));
-  } else {
-    calculatedGridState = state.gridState || 'NOMINAL';
-    const cloudGeoJson = geoJson?.compiledSubstationGeoJson || { type: 'FeatureCollection', features: [] };
-    const rawAssetsList = data?.gridAssets || [];
-
-    processedSubstationFeatures = (cloudGeoJson.features || []).map(f => {
-      const liveAssetMatch = rawAssetsList.find(a => a.id === f.properties?.id);
-      return {
-        ...f,
-        properties: {
-          ...f.properties,
-          power_routing: liveAssetMatch ? liveAssetMatch.power_routing : 'MAIN_LINE_FEED'
-        }
-      };
-    });
-  }
 
   const activeMarineFeatures = state.airGapped
     ? runLocalMarineTelemetry()
