@@ -241,6 +241,10 @@ export default function App() {
         const result = await runLocalTriage(reportText, state);
         alert(`${result.actionable_tactical_playbook}`);
         setters.setActiveThreatIndex(result.matched_node_threat_index);
+        
+        // Local air-gapped backup speaker
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(result.actionable_tactical_playbook));
       } catch (err) {
         console.error("Edge Engine Error:", err);
       } finally {
@@ -264,7 +268,29 @@ export default function App() {
         if (resData.matched_node_threat_index !== null) {
           setters.setActiveThreatIndex(resData.matched_node_threat_index);
         }
+        
         alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
+        
+        // === SECOND HOP: SEND TO ELEVENLABS ACCENT ROUTE ===
+        try {
+          const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: resData.actionable_tactical_playbook })
+          });
+          
+          // Read binary stream chunk and construct player source
+          const audioBlob = await audioResponse.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          await audio.play();
+          
+        } catch (audioErr) {
+          console.warn("ElevenLabs route failed, running client-side fallback:", audioErr);
+          // If ElevenLabs drops, immediately clear queues and vocalize via browser native engine
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(new SpeechSynthesisUtterance(resData.actionable_tactical_playbook));
+        }
       }
     } catch (err) {
       console.error('Transmission processing failure:', err);
