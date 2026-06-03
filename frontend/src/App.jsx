@@ -29,7 +29,7 @@ const substationLayer = {
     'circle-radius': 8,
     'circle-color': [
       'match',
-      '['get', 'status']',
+      ['get', 'status'],
       'critical', '#f43f5e',
       '#10b981'
     ],
@@ -85,14 +85,14 @@ const routingLayer = {
   paint: {
     'line-color': [
       'match',
-      '['get', 'urgency']',
+      ['get', 'urgency'],
       'CRITICAL', '#ef4444',
       'HIGH', '#f97316',
       '#8b5cf6'
     ],
     'line-width': [
       'match',
-      '['get', 'urgency']',
+      ['get', 'urgency'],
       'CRITICAL', 6,
       'HIGH', 4,
       2
@@ -107,7 +107,7 @@ const structuralFootprintLayer = {
   paint: {
     'fill-extrusion-color': [
       'match',
-      '['get', 'usage_type']',
+      ['get', 'usage_type'],
       'GOVERNMENTAL', '#f43f5e',
       'COMMERCIAL', '#fb923c',
       'RESIDENTIAL', '#38bdf8',
