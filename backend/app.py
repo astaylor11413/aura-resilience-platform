@@ -303,46 +303,38 @@ def transcribe_and_triage_report():
         "build_verification_timestamp": "v3.1.0-patois-forced-v1"
     }), 200
 
-# 6. Outbound Accent-Aware TTS Generation Route
 @app.route('/api/v1/voice/broadcast', methods=['POST'])
 def generate_dialect_broadcast():
     data = request.get_json() or {}
     text_to_speak = data.get("text", "Warning: Move inland.")
     
-    # Strip out the old textbook overrides entirely and use your clean Patois payloads directly
-    stylized_text = text_to_speak.replace("ACTIVATE PROTOCOL ", "Alert: ")
-
-    # Add a smooth regional voice anchor tag at the start of the audio generation
-    final_payload_text = f"Attention across regions. {stylized_text}"
-    
-    ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+    ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "").strip()
     CARIBBEAN_VOICE_ID = "GlD09HsN6Do7w6pL3gA3"
     
-    if not ELEVENLABS_API_KEY: 
-        return jsonify({"info": "Key missing. Client WebSpeech Fallback activated."}), 200
-    
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{CARIBBEAN_VOICE_ID}"
-    headers = {"Accept": "audio/mpeg", "Content-Type": "application/json", "xi-api-key": ELEVENLABS_API_KEY}
+    headers = {
+        "Accept": "audio/mpeg", 
+        "Content-Type": "application/json", 
+        "xi-api-key": ELEVENLABS_API_KEY
+    }
     
-    try:
-        res = requests.post(url, json={
-            "text": final_payload_text,  # <-- Patois text strings trigger natural accent inflections smoothly
-            "model_id": "eleven_multilingual_v2", 
-            "voice_settings": {
-                "stability": 0.35,        # Dropped to allow highly expressive cadence variations
-                "similarity_boost": 0.88, 
-                "style": 0.25,            
-                "use_speaker_boost": True
-            }}, headers=headers, stream=True)
-        if res.status_code == 200:
-            with open("/tmp/alert.mp3", "wb") as f:
-                for c in res.iter_content(1024): f.write(c)
-            return send_file("/tmp/alert.mp3", mimetype="audio/mpeg")
-        else:
-            return jsonify({"info": "ElevenLabs API Error. Falling back to browser audio."}), 200
-    except Exception as e: 
-        return jsonify({"error": str(e), "info": "Fallback triggered"}), 500
+    payload = {
+        "text": f"Attention across regions. {text_to_speak.replace('ACTIVATE PROTOCOL ', 'Alert: ')}",
+        "model_id": "eleven_multilingual_v2", 
+        "voice_settings": {"stability": 0.35, "similarity_boost": 0.88, "style": 0.25, "use_speaker_boost": True}
+    }
+
+    res = requests.post(url, json=payload, headers=headers, stream=True)
     
+    # CRITICAL: If the request fails, return the actual status code/text
+    # so the frontend doesn't silently fallback to browser voice.
+    if res.status_code != 200:
+        return f"ElevenLabs API Failure: {res.text}", res.status_code
+
+    with open("/tmp/alert.mp3", "wb") as f:
+        for c in res.iter_content(1024): f.write(c)
+    return send_file("/tmp/alert.mp3", mimetype="audio/mpeg")
+
 # 7. Layer 3 Alignment: Nearest-Neighbor Euclidean Spatial Route Compiler
 @app.route('/api/v1/spatial/mutual-aid-paths', methods=['GET'])
 def calculate_optimal_routing():
