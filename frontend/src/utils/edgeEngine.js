@@ -17,11 +17,24 @@ export const runLocalTriage = async (text) => {
   const labels = ["Severe Flooding", "Power Grid Failure", "Structural Damage"];
   const res = await classifier(text, labels);
 
+  const primaryThreat = res.labels[0]; // "Severe Flooding", etc.
   const threatIndex = text.toLowerCase().includes('palisadoes') ? 1 : 0;
+
+  // Localized dialect playbook dictionary mapping matching your app.py layout
+  const localPlaybooks = {
+    "Severe Flooding": "Hear dis now, attention across the coastline. Big storm surge a come and the water dem heavy down south. Close the sea-wall gates immediately! Every emergency vehicle, clear off the low roads right now and take the high-elevation transit lanes. Move fast!",
+    "Power Grid Failure": "Red alert, the main transmission lines dem drop and the power grid mash up completely. We a cut off the main feed now and locking into local microgrid power. Repair crews, pack up your gear and dispatch straight to the isolated sectors down the line.",
+    "Structural Damage": "Listen up, the substation structures dem compromise and the boundary breach severe. Engineering field units, look sharp and move out now. Secure the whole perimeter and hold up the energy framework before the next line drop."
+  };
+
+  // Fallback string if classification drops into an unexpected variant
+  const fallbackPlaybook = `[EDGE_MODE] Triage Complete: ${primaryThreat}. Look sharp and execute local safety protocols immediately.`;
+
   return {
-    triage_incident_profile: res.labels[0],
+    triage_incident_profile: primaryThreat,
     matched_node_threat_index: threatIndex,
-    actionable_tactical_playbook: `[EDGE_MODE] Triage Complete: ${res.labels[0]}. Execute local safety protocol.`
+    // Safely look up the dialect string or hit the fallback template
+    actionable_tactical_playbook: localPlaybooks[primaryThreat] || fallbackPlaybook
   };
 };
 
