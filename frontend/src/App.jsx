@@ -215,18 +215,18 @@ export default function App() {
 
     // Dynamic Zoom Action: Scan grid infrastructure for the critical target location
     setTimeout(() => {
-      const palisadoesNode = processedSubstationFeatures.find(f => 
+      const palisadoesNode = processedSubstationFeatures.find(f =>
         String(f.properties?.name || '').toLowerCase().includes('palisadoes')
       );
 
       if (palisadoesNode?.geometry?.coordinates) {
         const [lng, lat] = palisadoesNode.geometry.coordinates;
-        mapRef.current?.flyTo({ 
-          center: [lng, lat], 
-          zoom: 13.5, 
-          pitch: 45, 
+        mapRef.current?.flyTo({
+          center: [lng, lat],
+          zoom: 13.5,
+          pitch: 45,
           essential: true,
-          duration: 2500 
+          duration: 2500
         });
       }
     }, 100);
@@ -241,7 +241,7 @@ export default function App() {
         const result = await runLocalTriage(reportText, state);
         alert(`${result.actionable_tactical_playbook}`);
         setters.setActiveThreatIndex(result.matched_node_threat_index);
-        
+
         // Local air-gapped backup speaker
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(new SpeechSynthesisUtterance(result.actionable_tactical_playbook));
@@ -268,7 +268,7 @@ export default function App() {
         if (resData.matched_node_threat_index !== null) {
           setters.setActiveThreatIndex(resData.matched_node_threat_index);
         }
-        
+
         // === SECOND HOP: SEND TO ELEVENLABS ACCENT ROUTE ===
         try {
           const audioResponse = await fetch('https://aura-resilience-platform-prod.onrender.com/api/v1/voice/broadcast', {
@@ -276,22 +276,26 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: resData.actionable_tactical_playbook })
           });
-          
+
           // Read binary stream chunk and construct player source
           const audioBlob = await audioResponse.blob();
           const audioUrl = URL.createObjectURL(audioBlob);
           const audio = new Audio(audioUrl);
           await audio.play();
-          
+
         } catch (audioErr) {
-          console.warn("ElevenLabs route failed, running client-side fallback:", audioErr);
-          // If ElevenLabs drops, immediately clear queues and vocalize via browser native engine
+          const errorResponse = await audioResponse.text(); // Get the actual error message
+          console.error("--- BACKEND REJECTED THE REQUEST ---");
+          console.error("Error Status:", audioResponse.status);
+          console.error("Error Detail:", errorResponse);
+
+          // Now trigger the fallback
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(new SpeechSynthesisUtterance(resData.actionable_tactical_playbook));
         }
-        
+
         alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
-        
+
       }
     } catch (err) {
       console.error('Transmission processing failure:', err);
@@ -407,7 +411,7 @@ export default function App() {
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
               <span>AIR_GAPPED_MODE</span>
-            </label>                     
+            </label>
           </div>
         </header>
 
