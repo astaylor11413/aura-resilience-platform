@@ -581,9 +581,9 @@ export default function App() {
                 return (
                   <div
                     key={i}
-                    onClick={() => zoomToRoute(route)} // <--- ADD THIS LINE
-                    className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono cursor-pointer hover:border-emerald-500/50 transition-colors" // <--- ADDED cursor-pointer for better UX
-                  >
+                    onClick={() => zoomToRoute(route)}
+                    className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono cursor-pointer hover:border-emerald-500/50 transition-colors"
+                    >
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-emerald-400 font-bold">{originKitchen}</span>
                       <span className="text-slate-500">→</span>
