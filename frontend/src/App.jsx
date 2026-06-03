@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Map, { Source, Layer } from 'react-map-gl';
-import maplibregl from 'maplibre-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuraData } from './hooks/useAuraData';
 import { HudPanel } from './components/HudPanel';
