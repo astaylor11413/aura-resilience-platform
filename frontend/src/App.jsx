@@ -5,6 +5,7 @@ import { useAuraData } from './hooks/useAuraData';
 import { HudPanel } from './components/HudPanel';
 import { ImpactAnalysisPanel } from './components/ImpactAnalysisPanel';
 import { ShieldAlert } from 'lucide-react';
+import ThreeDSimulationPage from './ThreeDSimulationPage';
 import {
   runLocalTriage,
   runLocalGridSimulation,
@@ -28,7 +29,7 @@ const substationLayer = {
     'circle-radius': 8,
     'circle-color': [
       'match',
-      ['get', 'status'],
+      '['get', 'status']',
       'critical', '#f43f5e',
       '#10b981'
     ],
@@ -84,14 +85,14 @@ const routingLayer = {
   paint: {
     'line-color': [
       'match',
-      ['get', 'urgency'],
+      '['get', 'urgency']',
       'CRITICAL', '#ef4444',
       'HIGH', '#f97316',
       '#8b5cf6'
     ],
     'line-width': [
       'match',
-      ['get', 'urgency'],
+      '['get', 'urgency']',
       'CRITICAL', 6,
       'HIGH', 4,
       2
@@ -106,7 +107,7 @@ const structuralFootprintLayer = {
   paint: {
     'fill-extrusion-color': [
       'match',
-      ['get', 'usage_type'],
+      '['get', 'usage_type']',
       'GOVERNMENTAL', '#f43f5e',
       'COMMERCIAL', '#fb923c',
       'RESIDENTIAL', '#38bdf8',
@@ -349,70 +350,78 @@ export default function App() {
       
       {/* MAP UNDERLAY */}
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
-        <Map
-          {...viewState}
-          ref={mapRef}
-          onMove={evt => setViewState(evt.viewState)}
-          mapboxAccessToken={MAPBOX_TOKEN}
-          mapStyle={
-            localSimState.isSimulating
-              ? "mapbox://styles/mapbox/satellite-streets-v12"
-              : "mapbox://styles/mapbox/dark-v11"
-          }
-          style={{ width: '100%', height: '100%' }}
-        >
-          <Source id="inundation-data" type="geojson" data={activeInundation}>
-            <Layer {...inundationLayer} />
-          </Source>
-
-          {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
-            <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
-              <Layer {...routingLayer} />
-              <Layer
-                id="routing-labels"
-                type="symbol"
-                layout={{
-                  'text-field': ['get', 'urgency'],
-                  'text-size': 10,
-                  'text-offset': [0, -1],
-                  'text-anchor': 'bottom',
-                  'symbol-placement': 'line'
-                }}
-                paint={{ 'text-color': '#ffffff' }}
-              />
-              <Layer
-                id="routing-arrows"
-                type="symbol"
-                layout={{
-                  'symbol-placement': 'line',
-                  'symbol-spacing': 50,
-                  'text-field': '▶',
-                  'text-size': 12,
-                  'text-keep-upright': true
-                }}
-                paint={{ 'text-color': '#ffffff' }}
-              />
+        {localSimState.isSimulating ? (
+          /* SWAPPED MAP VIEWPORT: 3D Esri / Satellite Terrain Engine */
+          <ThreeDSimulationPage 
+            simulationArgs={{
+              slrMeters: localSimState.slrMeters,
+              windSpeed: localSimState.windSpeed,
+              threatIndex: globalState.activeThreatIndex
+            }}
+          />
+        ) : (
+          /* DEFAULT MAP VIEWPORT: Optimized Flat Operations Map */
+          <Map
+            {...viewState}
+            ref={mapRef}
+            onMove={evt => setViewState(evt.viewState)}
+            mapboxAccessToken={MAPBOX_TOKEN}
+            mapStyle="mapbox://styles/mapbox/dark-v11"
+            style={{ width: '100%', height: '100%' }}
+          >
+            <Source id="inundation-data" type="geojson" data={activeInundation}>
+              <Layer {...inundationLayer} />
             </Source>
-          )}
 
-          {showMarineLayer && activeMarineFeatures.length > 0 && (
-            <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
-              <Layer {...marinePolygonLayer} />
-              <Layer {...marineGlowLayer} />
+            {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
+              <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
+                <Layer {...routingLayer} />
+                <Layer
+                  id="routing-labels"
+                  type="symbol"
+                  layout={{
+                    'text-field': ['get', 'urgency'],
+                    'text-size': 10,
+                    'text-offset': [0, -1],
+                    'text-anchor': 'bottom',
+                    'symbol-placement': 'line'
+                  }}
+                  paint={{ 'text-color': '#ffffff' }}
+                />
+                <Layer
+                  id="routing-arrows"
+                  type="symbol"
+                  layout={{
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 50,
+                    'text-field': '▶',
+                    'text-size': 12,
+                    'text-keep-upright': true
+                  }}
+                  paint={{ 'text-color': '#ffffff' }}
+                />
+              </Source>
+            )}
+
+            {showMarineLayer && activeMarineFeatures.length > 0 && (
+              <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
+                <Layer {...marinePolygonLayer} />
+                <Layer {...marineGlowLayer} />
+              </Source>
+            )}
+
+            <Source id="substation-data" type="geojson" data={{ type: "FeatureCollection", features: processedSubstationFeatures }}>
+              <Layer {...substationLayer} />
             </Source>
-          )}
 
-          <Source id="substation-data" type="geojson" data={{ type: "FeatureCollection", features: processedSubstationFeatures }}>
-            <Layer {...substationLayer} />
-          </Source>
-
-          {showImpactAnalysis && geoJson?.structuresGeoJson && (
-            <Source id="fema-structures" type="geojson" data={geoJson.structuresGeoJson}>
-              <Layer {...usaStructuresLayerConfig} />
-              <Layer {...structuralFootprintLayer} id="usa-structures-base" />
-            </Source>
-          )}
-        </Map>
+            {showImpactAnalysis && geoJson?.structuresGeoJson && (
+              <Source id="fema-structures" type="geojson" data={geoJson.structuresGeoJson}>
+                <Layer {...usaStructuresLayerConfig} />
+                <Layer {...structuralFootprintLayer} id="usa-structures-base" />
+              </Source>
+            )}
+          </Map>
+        )}
       </div>
 
       {/* FOREGROUND HUD LAYOUT */}
@@ -433,6 +442,11 @@ export default function App() {
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
               onClick={() => {
+                if (localSimState.isSimulating) {
+                  // Fallback state escape mechanism if resetting view while in 3D execution mode
+                  setLocalSimState(prev => ({ ...prev, isSimulating: false }));
+                  setters.setIsSimulating(false);
+                }
                 mapRef.current?.flyTo({
                   center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude],
                   zoom: HOME_COORDINATES.zoom,
@@ -468,6 +482,7 @@ export default function App() {
             <button
               onClick={() => {
                 if (window.confirm("CRITICAL: This will purge all local session data and reset AURA to factory settings. Continue?")) {
+                  setLocalSimState(prev => ({ ...prev, isSimulating: false }));
                   setters.resetAuraState();
                 }
               }}
@@ -517,7 +532,7 @@ export default function App() {
                     key={i}
                     className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                     onToggle={(e) => {
-                      if (e.currentTarget.open && geomCoords) {
+                      if (e.currentTarget.open && geomCoords && !localSimState.isSimulating) {
                         handlePanToTarget(geomCoords[0], geomCoords[1]);
                       }
                     }}
@@ -578,7 +593,7 @@ export default function App() {
                         key={props.id}
                         className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
                         onToggle={(e) => {
-                          if (e.currentTarget.open && coords) {
+                          if (e.currentTarget.open && coords && !localSimState.isSimulating) {
                             handlePanToTarget(coords[0], coords[1]);
                           }
                         }}
@@ -627,7 +642,10 @@ export default function App() {
               currentTimeStep={currentTimeStep}
               onTimeStepChange={setCurrentTimeStep}
               structuralStats={structuralStats}
-              onClose={() => setShowImpactAnalysis(false)}
+              onClose={() => {
+                setShowImpactAnalysis(false);
+                setLocalSimState(prev => ({ ...prev, isSimulating: false }));
+              }}
             />
           )}
         </div>
