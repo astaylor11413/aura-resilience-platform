@@ -57,7 +57,7 @@ mock_ocean_anomalies = [
     },
     {  
         # RESTORED TO CARIBBEAN BOUNDS: Placed in the gyre convergence south of Pedro Cays
-        "name": "Pedro Bank Pelagic Plastic & Sargassum Gyre", 
+        "name": "Pedro Bank Plastic & Sargassum Area", 
         "coordinates": [-77.50, 17.20], 
         "temp_anomaly": 2.6, 
         "plastic_density": 912.4  # High density triggers the Watchdog alert logic

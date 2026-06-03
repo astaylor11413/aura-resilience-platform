@@ -424,7 +424,7 @@ export default function App() {
             )}
           </HudPanel>
 
-          <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer}>
+          <HudPanel title="Marine Warnings" onToggle={setShowMarineLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {activeMarineFeatures.map((m, i) => {
                 const locName = m.properties?.location_name || 'Anomalous Region';
@@ -488,7 +488,7 @@ export default function App() {
 
         {/* RIGHT COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-          <HudPanel title="GNN Grid Analyzer">
+          <HudPanel title="JPS Grid Status">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {processedSubstationFeatures.map(feat => {
                 const props = feat.properties || {};
@@ -517,7 +517,7 @@ export default function App() {
             </div>
           </HudPanel>
 
-          <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
+          <HudPanel title="Shelter Supplies" onToggle={setShowRoutingLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {(activeRoutingGeoJson.features || []).map((route, i) => {
                 const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
@@ -545,7 +545,7 @@ export default function App() {
 
         {/* TRANSCRIBER PANEL */}
         <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
-          <HudPanel title="Logistics Transcriber">
+          <HudPanel title="Radio Dispatch">
             <div className="flex gap-2">
               <textarea
                 value={reportText}
