@@ -258,7 +258,7 @@ export default function App() {
       formData.append('text', reportText);
       formData.append('air_gapped', state.airGapped ? 'true' : 'false');
 
-      const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
+      const response = await fetch('https://aura-resilience-platform-prod.onrender.com/api/v1/voice/report', {
         method: 'POST',
         body: formData
       });
@@ -271,7 +271,7 @@ export default function App() {
         
         // === SECOND HOP: SEND TO ELEVENLABS ACCENT ROUTE ===
         try {
-          const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
+          const audioResponse = await fetch('https://aura-resilience-platform-prod.onrender.com/api/v1/voice/broadcast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: resData.actionable_tactical_playbook })
