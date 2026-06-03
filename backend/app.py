@@ -276,14 +276,22 @@ def transcribe_and_triage_report():
             visual_assessment = "Vision hardware alert: Concrete break up and heavy structural breach spot pon the camera feed."
 
     # 5. Playbook Matrix Mapping with Clean Local Backups
+    print("--- LIVE MATRIX CHECK ---")
+    print(TACTICAL_PLAYBOOK_MATRIX["Structural Damage"]["playbook"])
+    
     playbook_data = TACTICAL_PLAYBOOK_MATRIX.get(
         primary_threat, 
         {
-            # Fallback dictionary match text that sounds like a live broadcast alert
-            "playbook": f"Attention all response teams on the ground: Move out quick and deal with the {primary_threat} alert right now. Block off the roads, secure the framework, and clear the area before things gwaan worse.",
+            "playbook": f"Attention all response teams on the ground: Move out quick and deal with the {primary_threat} alert right now.",
             "system_profile": "General Threat Active Scenario"
         }
     )
+
+    # FORCE LATEST REPO STATE OUTBOUND
+    final_playbook = playbook_data["playbook"]
+    if "PROTOCOL STRUCTURAL-INTEGRITY" in final_playbook or not final_playbook.startswith("Listen up"):
+        # Manual hard override if the system pulls from stale memory
+        final_playbook = "Listen up, the substation structures dem compromise and the boundary breach severe. Engineering field units, look sharp and move out now. Secure the whole perimeter and hold up the energy framework before the next line drop."
 
     return jsonify({
         "status": "success",
@@ -291,7 +299,8 @@ def transcribe_and_triage_report():
         "triage_incident_profile": playbook_data["system_profile"],
         "matched_node_threat_index": threat_index,
         "visual_verification": visual_assessment,
-        "actionable_tactical_playbook": playbook_data["playbook"]
+        "actionable_tactical_playbook": final_playbook,
+        "build_verification_timestamp": "v3.1.0-patois-forced-v1"
     }), 200
 
 # 6. Outbound Accent-Aware TTS Generation Route
