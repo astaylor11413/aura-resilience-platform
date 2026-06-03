@@ -347,12 +347,6 @@ export default function App() {
           <div className="flex items-center gap-3">
             <div className={`h-3 w-3 rounded-full ${calculatedGridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${state.airGapped ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-              <span className="text-[10px] font-mono uppercase text-slate-400">
-                {state.airGapped ? `[MODE: EDGE_ISOLATED | AI: ${modelReady ? 'READY' : 'LOADING'}]` : "[MODE: CLOUD_SYNC]"}
-              </span>
-            </div>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
