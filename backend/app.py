@@ -316,7 +316,7 @@ def generate_dialect_broadcast():
     final_payload_text = f"Attention across regions. {stylized_text}"
     
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
-    CARIBBEAN_VOICE_ID = "eRcsJdPMOM0mtGC03ul7"
+    CARIBBEAN_VOICE_ID = "GlD09HsN6Do7w6pL3gA3"
     
     if not ELEVENLABS_API_KEY: 
         return jsonify({"info": "Key missing. Client WebSpeech Fallback activated."}), 200
