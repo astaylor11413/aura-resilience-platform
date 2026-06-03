@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Map, { Source, Layer } from 'react-map-gl';
+import maplibregl from 'maplibre-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuraData } from './hooks/useAuraData';
 import { HudPanel } from './components/HudPanel';
@@ -140,6 +141,24 @@ export default function App() {
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
+  const zoomToRoute = (feature) => {
+    const map = mapRef.current;
+    if (!map || !feature.geometry.coordinates) return;
+
+    const coords = feature.geometry.coordinates;
+
+    // Create a bounding box that covers both the kitchen and the shelter
+    const bounds = coords.reduce((bounds, coord) => {
+      return bounds.extend(coord);
+    }, new maplibregl.LngLatBounds(coords[0], coords[0]));
+
+    // Fly to the line with padding so it's not squashed against the edges
+    map.fitBounds(bounds, {
+      padding: 100, // Adds space around the route
+      duration: 2000, // Smooth 2-second animation
+      essential: true
+    });
+  };
 
   // Model Warm-up
   useEffect(() => {
@@ -561,7 +580,11 @@ export default function App() {
                 const blurb = getLogisticsBlurb(originKitchen, urgency);
 
                 return (
-                  <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                  <div
+                    key={i}
+                    onClick={() => zoomToRoute(route)} // <--- ADD THIS LINE
+                    className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono cursor-pointer hover:border-emerald-500/50 transition-colors" // <--- ADDED cursor-pointer for better UX
+                  >
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-emerald-400 font-bold">{originKitchen}</span>
                       <span className="text-slate-500">→</span>
