@@ -309,7 +309,7 @@ def generate_dialect_broadcast():
     text_to_speak = data.get("text", "Warning: Move inland.")
     
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-    CARIBBEAN_VOICE_ID = "eRcsJdPMOM0mtGC03ul7"
+    CARIBBEAN_VOICE_ID = "dhwafD61uVd8h85wAZSE"
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{CARIBBEAN_VOICE_ID}"
     headers = {
@@ -321,7 +321,7 @@ def generate_dialect_broadcast():
     payload = {
         "text": f"Attention across regions. {text_to_speak.replace('ACTIVATE PROTOCOL ', 'Alert: ')}",
         "model_id": "eleven_multilingual_v2", 
-        "voice_settings": {"stability": 0.35, "similarity_boost": 0.88, "style": 0.25, "use_speaker_boost": True}
+        "voice_settings": {"stability": 0.35, "similarity_boost": 0.88, "style": 0.25, "optimize_streaming_latency": 3, "use_speaker_boost": True}
     }
 
     res = requests.post(url, json=payload, headers=headers, stream=True)
