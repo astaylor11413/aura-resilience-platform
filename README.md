@@ -1,5 +1,5 @@
 # AURA Resilience Platform (Advanced Simulation Variant)
-> **Note:** This is the advanced, experimental tier of the AURA platform. It builds upon the core infrastructure to introduce 3D terrain manipulation, real-time sea-level surge vectors, and physics-informed inundation layers.
+> **Note:** This is the advanced, experimental tier of the AURA platform. It builds upon the core infrastructure to introduce 3D terrain manipulation, real-time sea-level surge vectors, and physics-informed inundation layers. For high-fidelity ElevenLabs voice dialect-broadcast functionality for emergency response along with the core functionalities, switch to the main branch.
 
 Aura is a full-stack climate resilience platform designed to safeguard coastal populations, island networks, and urban food grids. It combines real-time environmental telemetry, predictive critical infrastructure modeling, and an AI-driven, dialect-aware logistics engine.
 
