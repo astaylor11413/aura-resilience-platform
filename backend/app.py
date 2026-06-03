@@ -309,7 +309,7 @@ def generate_dialect_broadcast():
     text_to_speak = data.get("text", "Warning: Move inland.")
     
     ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-    CARIBBEAN_VOICE_ID = "GlD09HsN6Do7w6pL3gA3"
+    CARIBBEAN_VOICE_ID = "eRcsJdPMOM0mtGC03ul7"
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{CARIBBEAN_VOICE_ID}"
     headers = {
