@@ -275,10 +275,7 @@ def transcribe_and_triage_report():
             # Localized camera hardware warning
             visual_assessment = "Vision hardware alert: Concrete break up and heavy structural breach spot pon the camera feed."
 
-    # 5. Playbook Matrix Mapping with Clean Local Backups
-    print("--- LIVE MATRIX CHECK ---")
-    print(TACTICAL_PLAYBOOK_MATRIX["Structural Damage"]["playbook"])
-    
+    # 5. Playbook Matrix Mapping
     playbook_data = TACTICAL_PLAYBOOK_MATRIX.get(
         primary_threat, 
         {
@@ -287,11 +284,10 @@ def transcribe_and_triage_report():
         }
     )
 
-    # FORCE LATEST REPO STATE OUTBOUND
     final_playbook = playbook_data["playbook"]
-    if "PROTOCOL STRUCTURAL-INTEGRITY" in final_playbook or not final_playbook.startswith("Listen up"):
-        # Manual hard override if the system pulls from stale memory
-        final_playbook = "Listen up, the substation structures dem compromise and the boundary breach severe. Engineering field units, look sharp and move out now. Secure the whole perimeter and hold up the energy framework before the next line drop."
+    
+    if not final_playbook:
+        final_playbook = "System alert: General emergency protocol active."
 
     return jsonify({
         "status": "success",
