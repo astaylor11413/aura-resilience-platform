@@ -214,15 +214,15 @@ def simulate_inundation():
 # 5. Integrated Ingestion Pipeline Configuration Matrix
 TACTICAL_PLAYBOOK_MATRIX = {
     "Severe Flooding": {
-        "playbook": "ACTIVATE PROTOCOL AMPHIBIOUS-SHIELD: Coastal telemetry bounds breached. Deploy automated sea-wall micro-gates and route emergency vehicles to high-elevation transit lanes.",
+        "playbook": "Hear dis now, attention across the coastline. Big storm surge a come and the water dem heavy down south. Close the sea-wall gates immediately! Every emergency vehicle, clear off the low roads right now and take the high-elevation transit lanes. Move fast!",
         "system_profile": "Severe Shoreline Surge / Inundation Event"
     },
     "Power Grid Failure": {
-        "playbook": "ACTIVATE PROTOCOL OMNI-ISOLATION: Main transmission lines compromised. Islanding command sequences routed to local microgrid nodes; dispatching asset repair crews to isolated sectors.",
+        "playbook": "Red alert, the main transmission lines dem drop and the power grid mash up completely. We a cut off the main feed now and locking into local microgrid power. Repair crews, pack up your gear and dispatch straight to the isolated sectors down the line.",
         "system_profile": "Critical Grid Topology Degradation"
     },
     "Structural Damage": {
-        "playbook": "ACTIVATE PROTOCOL STRUCTURAL-INTEGRITY: Substation physical bounds compromised. Dispatch engineering field units immediately to secure the perimeter and stabilize neighboring energy distribution frameworks.",
+        "playbook": "Listen up, the substation structures dem compromise and the boundary breach severe. Engineering field units, look sharp and move out now. Secure the whole perimeter and hold up the energy framework before the next line drop.",
         "system_profile": "Physical Infrastructure Breach"
     }
 }
@@ -310,7 +310,7 @@ def generate_dialect_broadcast():
             "text": stylized_text,  # <-- Send the stylized version with natural cadence
             "model_id": "eleven_multilingual_v2", 
             "voice_settings": {
-                "stability": 0.40,       # Dropped to 0.40 to allow more expressive inflection variations
+                "stability": 0.35,       # Dropped to 0.40 to allow more expressive inflection variations
                 "similarity_boost": 0.88, # Slightly higher boost forces attachment to custom voice properties
                 "style": 0.25,            # Lifted slightly to push the model to prioritize stylistic accents
                 "use_speaker_boost": True
