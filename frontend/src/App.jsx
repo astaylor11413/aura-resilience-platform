@@ -119,7 +119,7 @@ const structuralFootprintLayer = {
   }
 };
 
-// --- LOGISTICS UTILITY HELPER ---
+
 const getLogisticsBlurb = (facilityName, urgency) => {
   const name = String(facilityName || '').toLowerCase();
   const isKitchen = name.includes("kitchen");
@@ -145,7 +145,6 @@ const getLogisticsBlurb = (facilityName, urgency) => {
   };
 };
 
-// --- MAIN APPLICATION COMPONENT ---
 export default function App() {
   // Global context destructuring
   const { state: globalState, setters, data, geoJson } = useAuraData();
@@ -185,7 +184,7 @@ export default function App() {
     prepareEdge();
   }, []);
 
-  // Compute metrics combining temporal profile metrics and structural footprints
+  // Compute metrics: time vs structural footprints
   const structuralStats = useMemo(() => {
     const baseCurve = [0.08, 0.22, 0.41, 0.58, 0.72, 0.85, 0.93, 1.02, 1.08, 1.12, 1.15, 1.18];
     const multiplier = (globalState.windSpeed / 90) + (globalState.slrMeters * 0.2);
@@ -239,7 +238,7 @@ export default function App() {
     });
   };
 
-  // 🟢 LIVE INTERACTIVE TIMELINE ORCHESTRATOR
+  // LIVE INTERACTIVE TIMELINE ORCHESTRATOR WITH GENUINE ELEVENLABS AUDIO CHAIN
   const triggerResilientOrchestrationStory = () => {
     if (tickerRef.current) clearInterval(tickerRef.current);
 
@@ -248,24 +247,29 @@ export default function App() {
     setters.setSlrMeters(2.5);
     setters.setHurricaneIntensity(5);
     setShowImpactAnalysis(true);
+    setShowRoutingLayer(false); // Hide mutual aid routes until alert is resolved
     setCurrentTimeStep(0);
-    setCurrentAlert("⚠️ Category 4 Hurricane Outer Bands reaching Jamaica. Commencing live operational monitoring.");
+    setCurrentAlert("Category 4 Hurricane Outer Bands reaching Jamaica. Commencing live operational monitoring.");
 
+    // Simple opening browser announcement
     const alertText = "Emergency operations engaged. Initializing interactive storm surge timeline tracking.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
     const simulationTimeline = [
-      { step: 1, alert: "⚠️ Storm front tightening. Sea state telemetry indices elevating across the south shelf." },
-      { step: 3, alert: "🌊 Storm surge rising to 1.5m. Palisadoes runway/airport link perimeters experiencing initial breach." },
-      { step: 5, alert: "🚨 CRITICAL: Kingston Harbor waterfront layout reporting surge immersion. Localized power nodes offline." },
-      { step: 7, alert: "📉 AI Triage Engine: High risk of structural asset failure predicted across lower grid boundaries." },
-      { step: 9, alert: "🛑 MAXIMUM BREACH: Surge peaking at 4.5m. Automating industrial utility isolation protocols." },
-      { step: 11, alert: "✅ Triage Complete. Crisis footprint successfully compiled. Standing by for relief deployment." }
+      { step: 1, alert: "Storm front tightening. Sea state telemetry indices elevating across the south shelf." },
+      { step: 3, alert: "Storm surge rising to 1.5m. Palisadoes runway/airport link perimeters experiencing initial breach." },
+      { step: 5, alert: "CRITICAL: Kingston Harbor waterfront layout reporting surge immersion. Localized power nodes offline." },
+      { step: 7, alert: "AI Triage Engine: High risk of structural asset failure predicted across lower grid boundaries." },
+      { step: 9, alert: "MAXIMUM BREACH: Surge peaking at 4.5m. Automating industrial utility isolation protocols." },
+      { step: 11, alert: "Triage Complete. Crisis footprint successfully compiled. Triggering localized AI transcription." }
     ];
 
-    tickerRef.current = setInterval(() => {
+    tickerRef.current = setInterval(async () => {
+      let currentStepValue;
+      
       setCurrentTimeStep(prevStep => {
         const nextStep = prevStep + 1;
+        currentStepValue = nextStep;
         
         const matchingMilestone = simulationTimeline.find(item => item.step === nextStep);
         if (matchingMilestone) {
@@ -274,11 +278,83 @@ export default function App() {
 
         if (nextStep >= 11) {
           clearInterval(tickerRef.current);
-          return 11;
         }
         return nextStep;
       });
-    }, 2000); // 2 seconds per stage transition step
+
+      // Trigger final phase when timeline reaches its peak
+      if (currentStepValue >= 11) {
+        // Step 1: Simulate user typing or injecting the ground-truth problem
+        const incidentReport = "Palisadoes road link completely submerged down south. Coastal defenses breached near Rockfort, grid isolation requested.";
+        setReportText(incidentReport);
+        setIsProcessing(true);
+
+        try {
+          let tacticalPlaybook = "";
+          
+          // Step 2: Push through the core Flask backend triage engine
+          if (globalState.airGapped) {
+            const result = await runLocalTriage(incidentReport, globalState);
+            tacticalPlaybook = result.actionable_tactical_playbook;
+            if (result.matched_node_threat_index !== null) {
+              setters.setActiveThreatIndex(result.matched_node_threat_index);
+            }
+          } else {
+            const formData = new FormData();
+            formData.append('text', incidentReport);
+            formData.append('air_gapped', 'false');
+            
+            const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
+              method: 'POST',
+              body: formData
+            });
+            const resData = await response.json();
+            tacticalPlaybook = resData.actionable_tactical_playbook;
+          }
+
+          // Step 3: Chain text to Route #6 (/api/v1/voice/broadcast) for authentic ElevenLabs audio stream
+          const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
+          
+          try {
+            const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text: voiceBroadcastText })
+            });
+
+            // Check if backend returned valid file stream or triggered browser fallback string info
+            if (audioResponse.ok && audioResponse.headers.get('content-type')?.includes('audio/mpeg')) {
+              const audioBlob = await audioResponse.blob();
+              const audioUrl = URL.createObjectURL(audioBlob);
+              const audio = new Audio(audioUrl);
+              
+              // Play authentic dialect voice file
+              await audio.play();
+            } else {
+              // Fallback to standard web voice if backend key isn't deployed or error returns
+              window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
+            }
+          } catch (audioErr) {
+            console.warn("ElevenLabs audio stream chain failed, falling back to local TTS:", audioErr);
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
+          }
+
+          // Step 4: Display custom Alert popup overlay window to user
+          alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
+          
+          // Step 5: Post-alert cleanup - instantly slide open mutual aid vectors and maps
+          setShowImpactAnalysis(false); 
+          setShowRoutingLayer(true);   // renders paths from `/api/v1/spatial/mutual-aid-paths`
+          
+        } catch (err) {
+          console.error("Automated triage integration runner failure:", err);
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    }, 2000);
   };
 
   const handleProcessTransmission = async () => {
