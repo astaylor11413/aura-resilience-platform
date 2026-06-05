@@ -22,19 +22,27 @@ const HOME_COORDINATES = {
 };
 
 // --- STATIC MAP STYLE LAYERS ---
-const substationLayer = {
-  id: 'substations-layer',
+export const substationLayer = {
+  id: 'substation-layer',
   type: 'circle',
   paint: {
-    'circle-radius': 8,
+    'circle-radius': [
+      'interpolate', ['linear'], ['zoom'],
+      10, 5,
+      15, 12
+    ],
     'circle-color': [
-      'match',
-      ['get', 'status'],
-      'critical', '#f43f5e',
-      '#10b981'
+      'interpolate',
+      ['linear'],
+      ['coalesce', ['get', 'threat_index'], 0], // Reads the live threat data, defaults to 0
+      0, '#10b981',  // Stable / Safe (Emerald Green)
+      4, '#f59e0b',  // Warning / Elevated (Amber)
+      8, '#ef4444',  // Severe / Critical (Deep Red)
+      11, '#b91c1c'  // Peak Catastrophe (Crimson)
     ],
     'circle-stroke-width': 2,
-    'circle-stroke-color': '#ffffff'
+    'circle-stroke-color': '#ffffff',
+    'circle-opacity': 0.9
   }
 };
 
