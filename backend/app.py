@@ -213,18 +213,20 @@ def simulate_inundation():
 
 # 5. Integrated Ingestion Pipeline Configuration Matrix
 TACTICAL_PLAYBOOK_MATRIX = {
-    "Severe Flooding": {
-        "playbook": "ACTIVATE PROTOCOL AMPHIBIOUS-SHIELD: Coastal telemetry bounds breached. Deploy automated sea-wall micro-gates and route emergency vehicles to high-elevation transit lanes.",
-        "system_profile": "Severe Shoreline Surge / Inundation Event"
-    },
-    "Power Grid Failure": {
-        "playbook": "ACTIVATE PROTOCOL OMNI-ISOLATION: Main transmission lines compromised. Islanding command sequences routed to local microgrid nodes; dispatching asset repair crews to isolated sectors.",
-        "system_profile": "Critical Grid Topology Degradation"
-    },
-    "Structural Damage": {
-        "playbook": "ACTIVATE PROTOCOL STRUCTURAL-INTEGRITY: Substation physical bounds compromised. Dispatch engineering field units immediately to secure the perimeter and stabilize neighboring energy distribution frameworks.",
-        "system_profile": "Physical Infrastructure Breach"
-    }
+    {
+  "Severe Flooding": {
+    "playbook": "WARNIN: Di sea wall dem lick over and di water a rush in deep! Lock di automated micro-gates right now. Clear out di low road dem and make sure every single emergency truck drive go up pon di hill road dem before water trap dem.",
+    "system_profile": "Severe Shoreline Surge / Inundation Event"
+  },
+  "Power Grid Failure": {
+    "playbook": "GRID MASH UP: Di main transmission line dem drop. Isolate di bruk-down sector dem fast-fast and switch pon di local microgrid dem fi keep di light dem bright while di repair crew a try link up di cutout zone dem.",
+    "system_profile": "Critical Grid Topology Degradation"
+  },
+  "Structural Damage": {
+    "playbook": "BUILDIN BREACH: Substation frame a tweak and di physical structure look shaky. Move out di engineering field units right now fi lock down di perimeter and brace up di energy rack dem near it.",
+    "system_profile": "Physical Infrastructure Breach"
+  }
+}
 }
 
 @app.route('/api/v1/voice/report', methods=['POST'])
