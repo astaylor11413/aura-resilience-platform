@@ -78,7 +78,7 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs, currentT
             type="geojson" 
             data={geoData && geoData.features && geoData.features.length > 0 ? geoData : fallbackKingstonWaterGeoJson}
           >
-            <Layer {..extrusionLayerStyle} />
+            <Layer {...extrusionLayerStyle} />
           </Source>
         )}
       </Map>
