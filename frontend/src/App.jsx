@@ -515,6 +515,7 @@ export default function App() {
           <ThreeDSimulationPage 
             currentTimeStep={currentTimeStep}
             geoData={geoJson?.structuresGeoJson}
+            substationData={sanitizedSubstations}
             simulationArgs={{
               slrMeters: globalState.slrMeters,
               windSpeed: globalState.windSpeed,
