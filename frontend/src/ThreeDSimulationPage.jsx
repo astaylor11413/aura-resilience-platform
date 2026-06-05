@@ -11,7 +11,7 @@ const extrusionLayerStyle = {
   paint: {
     'fill-extrusion-color': '#3b82f6',
     'fill-extrusion-opacity': 0.6,
-    'fill-extrusion-height': ['coalesce', ['get', 'depth_meters'], 1.5], 
+    'fill-extrusion-height': ['coalesce', ['get', 'depth_meters'], 1.5],
     'fill-extrusion-base': 0
   }
 };
@@ -20,36 +20,14 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs, currentT
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // Dynamic style calculation tied to the timeline slider
-  const rasterFloodLayerStyle = {
-    id: 'jamaica-raster-flood-layer',
-    type: 'raster',
-    paint: {
-      // 1. Isolate the binary values: 0 (dry land) is hidden, 1 (flooded) gets a neon cyan tint
-      'raster-color': [
-        'interpolate', ['linear'], ['raster-value'],
-        0, 'rgba(0, 0, 0, 0)',
-        1, 'rgba(6, 182, 212, 0.8)' 
-      ],
-      'raster-color-range': [0, 1],
-
-      // 2. Dynamic Opacity Engine: Maps the 0-11 step timeline linearly to visibility
-      'raster-opacity': currentTimeStep === 0 
-        ? 0 
-        : (currentTimeStep / 11) * 0.85,
-
-      'raster-fade-duration': 300,
-      'raster-resampling': 'nearest'
-    }
-  };
-
   return (
     <div className="w-full h-full relative">
       <Map
         initialViewState={{
-          longitude: -77.2975, 
+          longitude: -77.2975,
           latitude: 18.1096,
-          zoom: 8.5,           
-          pitch: 50,           
+          zoom: 8.5,
+          pitch: 50,
           bearing: 0
         }}
         mapboxAccessToken={MAPBOX_TOKEN}
@@ -77,10 +55,30 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs, currentT
             ]}
             tileSize={256}
           >
-            {/* re-evaluate style when currentTimeStep changes */}
-            <Layer {...rasterFloodLayerStyle} />
+            <Layer
+              id="jamaica-raster-flood-layer"
+              type="raster"
+              paint={{
+                // 1. Isolate binary data: 0 is clear, 1 is a bright cyan surge overlay
+                'raster-color': [
+                  'interpolate', ['linear'], ['raster-value'],
+                  0, 'rgba(0, 0, 0, 0)',
+                  1, 'rgba(6, 182, 212, 0.85)'
+                ],
+                'raster-color-range': [0, 1],
+
+                // 2. Inline Calculation Engine (Forces Mapbox to redraw on every state change)
+                'raster-opacity': currentTimeStep === 0
+                  ? 0
+                  : (currentTimeStep / 11) * 0.85,
+
+                'raster-fade-duration': 200,
+                'raster-resampling': 'nearest'
+              }}
+            />
           </Source>
         )}
+      
 
         {/*Render 3D vector features if passed into data fields */}
         {mapLoaded && geoData && geoData.features && (
