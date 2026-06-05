@@ -1,83 +1,122 @@
 import React, { useState } from 'react';
-import Map, { Source, Layer } from 'react-map-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
+export function ImpactAnalysisPanel({ 
+  currentTimeStep, 
+  onTimeStepChange, 
+  structuralStats = {
+    carsRisk: 0,
+    suvRisk: 0,
+    structuralFailure: 0,
+    historicalDepthProfile: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  }, 
+  onClose 
+}) {
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
 
-export default function ThreeDSimulationPage({ geoData, simulationArgs, currentTimeStep = 0 }) {
-  const [mapLoaded, setMapLoaded] = useState(false);
-  
-  const dynamicStructuralFloodLayer = {
-    id: 'kingston-gradual-flood-layer',
-    type: 'fill-extrusion',
-    paint: {
-      // As the timeline moves forward, buildings gradually transition from nominal blue to severe red
-      'fill-extrusion-color': [
-        'match',
-        ['layer', 'id'], // Baseline catcher
-        'kingston-gradual-flood-layer', 
-        currentTimeStep > 8 
-          ? '#f43f5e' // Step 9-11: Severe Breach (Crimson)
-          : currentTimeStep > 4 
-            ? '#fb923c' // Step 5-8: Active Inundation (Orange)
-            : '#38bdf8', // Step 0-4: Nominal/Initial Surge (Cyan)
-        '#38bdf8'
-      ],
-      // Physically raise the 3D structures on the terrain map
-      'fill-extrusion-height': ['coalesce', ['get', 'height_meters'], 8],
-      'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': currentTimeStep === 0 ? 0.2 : 0.9
-    }
-  };
-
-  // Localized, high-density coordinate grid replicating Kingston's waterfront development clusters
-  const simulatedKingstonWaterfrontStructures = {
-    type: "FeatureCollection",
-    features: [
-      { type: "Feature", properties: { height_meters: 25 }, geometry: { type: "Polygon", coordinates: [[[-76.791, 17.965], [-76.789, 17.965], [-76.789, 17.967], [-76.791, 17.967], [-76.791, 17.965]]] } },
-      { type: "Feature", properties: { height_meters: 14 }, geometry: { type: "Polygon", coordinates: [[[-76.787, 17.963], [-76.785, 17.963], [-76.785, 17.965], [-76.787, 17.965], [-76.787, 17.963]]] } },
-      { type: "Feature", properties: { height_meters: 32 }, geometry: { type: "Polygon", coordinates: [[[-76.783, 17.962], [-76.781, 17.962], [-76.781, 17.964], [-76.783, 17.964], [-76.783, 17.962]]] } },
-      { type: "Feature", properties: { height_meters: 8 }, geometry: { type: "Polygon", coordinates: [[[-76.779, 17.966], [-76.777, 17.966], [-76.777, 17.968], [-76.779, 17.968], [-76.779, 17.966]]] } },
-      { type: "Feature", properties: { height_meters: 19 }, geometry: { type: "Polygon", coordinates: [[[-76.775, 17.961], [-76.773, 17.961], [-76.773, 17.963], [-76.775, 17.963], [-76.775, 17.961]]] } }
-    ]
-  };
-
-  // Compile datasets
-  const activeStructureData = geoData && geoData.features && geoData.features.length > 0
-    ? geoData
-    : simulatedKingstonWaterfrontStructures;
+  // Simulation time labels matching the 5-minute interval CRF slices
+  const timeSlices = Array.from({ length: 12 }, (_, i) => {
+    const minutes = (i + 1) * 5;
+    return `12:${minutes < 10 ? '0' : ''}${minutes} AM`;
+  });
 
   return (
-    <div className="w-full h-full relative">
-      <Map
-        initialViewState={{
-          longitude: -76.785, // Centered right over Kingston Waterfront clusters
-          latitude: 17.964,
-          zoom: 13.5,         // High altitude focus to observe individual building assets
-          pitch: 60,          // Distinct 3D angle view
-          bearing: -15
-        }}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
-        style={{ width: '100%', height: '100%' }}
-        onStyleData={() => setMapLoaded(true)}
-        terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
-      >
-        {/* Elevation Mesh Source */}
-        <Source
-          id="mapbox-dem"
-          type="raster-dem"
-          url="mapbox://mapbox.mapbox-terrain-dem-v1"
-          tileSize={256}
-          maxzoom={14}
-        />
+    <div className="bg-slate-950/90 backdrop-blur-2xl border border-rose-500/30 rounded-xl p-5 shadow-2xl flex flex-col gap-4 font-mono max-w-md w-full pointer-events-auto text-white">
+      
+      {/* HEADER SECTION */}
+      <div className="flex items-center justify-between border-b border-rose-500/20 pb-2">
+        <div>
+          <h2 className="text-xs font-bold tracking-widest text-rose-500 uppercase flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            ArcGIS Infrastructure Impact Engine
+          </h2>
+          <p className="text-[9px] text-slate-400 uppercase mt-0.5">
+            Active Dataset: Jamaica Structural Sample
+          </p>
+        </div>
+        <button 
+          onClick={onClose}
+          className="text-[9px] bg-slate-900 border border-white/10 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 transition-colors cursor-pointer"
+        >
+          HALT_SIM
+        </button>
+      </div>
 
-        {mapLoaded && (
-          <Source id="simulation-structural-source" type="geojson" data={activeStructureData}>
-            <Layer {...dynamicStructuralFloodLayer} />
-          </Source>
-        )}
-      </Map>
+      {/* MULTIDIMENSIONAL TIMELINE PLAYBACK (CRF Controller) */}
+      <div className="bg-slate-900/60 p-3 rounded-lg border border-white/5 space-y-2">
+        <div className="flex justify-between items-center text-[10px]">
+          <span className="text-slate-400 uppercase tracking-wider">Temporal Matrix Step:</span>
+          <span className="text-cyan-400 font-bold">{timeSlices[currentTimeStep] || timeSlices[0]}</span>
+        </div>
+        <input 
+          type="range" 
+          min="0" 
+          max="11" 
+          value={currentTimeStep} 
+          onChange={(e) => onTimeStepChange(parseInt(e.target.value, 10))}
+          className="w-full accent-rose-500 h-1 bg-slate-800 rounded-lg cursor-pointer"
+        />
+        <div className="flex justify-between text-[8px] text-slate-500">
+          <span>+5 MIN</span>
+          <span>STORM PEAK (60 MIN)</span>
+        </div>
+      </div>
+
+      {/* INFRASTRUCTURE IMPACT METRICS (FEMA / NWS Benchmarks) */}
+      <div className="space-y-2 text-[10px]">
+        <h3 className="text-slate-400 uppercase tracking-wider text-[9px]">Structural Inundation Distribution</h3>
+        
+        <div className="grid grid-cols-3 gap-1.5 text-center">
+          <div className="bg-amber-950/30 border border-amber-500/20 p-2 rounded">
+            <span className="text-amber-400 font-bold text-sm block">{structuralStats.carsRisk}</span>
+            <span className="text-[8px] text-slate-400 uppercase">≥12" (Car Float)</span>
+          </div>
+          <div className="bg-orange-950/30 border border-orange-500/20 p-2 rounded">
+            <span className="text-orange-400 font-bold text-sm block">{structuralStats.suvRisk}</span>
+            <span className="text-[8px] text-slate-400 uppercase">≥24" (SUV Float)</span>
+          </div>
+          <div className="bg-rose-950/30 border border-rose-500/20 p-2 rounded">
+            <span className="text-rose-400 font-bold text-sm block">{structuralStats.structuralFailure}</span>
+            <span className="text-[8px] text-slate-400 uppercase">≥36" (Breached)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* TEMPORAL PROFILE MINI-CHART CONTAINER */}
+      <div className="bg-slate-900/40 border border-white/5 p-3 rounded-lg space-y-2">
+        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">
+          Temporal Depth Profile (Goliad St Corridor Point Sample)
+        </span>
+        <div className="h-16 flex items-end gap-1.5 pt-2 border-b border-white/10 px-1">
+          {structuralStats.historicalDepthProfile.map((depth, idx) => (
+            <div 
+              key={idx} 
+              style={{ height: `${Math.min(100, depth * 70)}%` }}
+              className={`w-full rounded-t-sm transition-all duration-300 relative group cursor-pointer ${
+                idx === currentTimeStep ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]' : 'bg-rose-600/60 hover:bg-rose-500'
+              }`}
+              onClick={() => onTimeStepChange(idx)}
+            >
+              {/* Tooltip on hover */}
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-slate-900 text-white font-mono text-[7px] py-0.5 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap mb-1 border border-white/10 zonal-tooltip">
+                {depth.toFixed(2)}m
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between text-[7px] text-slate-500">
+          <span>05m</span>
+          <span>15m</span>
+          <span>30m</span>
+          <span>45m</span>
+          <span>60m</span>
+        </div>
+      </div>
+
+      {/* ACTION CONTROLLER */}
+      <div className="text-[8px] bg-cyan-950/20 border border-cyan-500/20 p-2 rounded text-cyan-300 leading-normal uppercase">
+        <span className="font-bold text-cyan-400 block">[MVT LAYER BROADCAST]</span>
+        Draping vector segments onto USGS 1-meter lidar DEM mesh. Structural geometries are dynamically scaling attributes based on active timestamp.
+      </div>
     </div>
   );
 }

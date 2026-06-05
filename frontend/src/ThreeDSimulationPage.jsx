@@ -1,59 +1,68 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Map, { Source, Layer } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
 export default function ThreeDSimulationPage({ geoData, simulationArgs, currentTimeStep = 0 }) {
-  const [mapRef, setMapRef] = React.useState(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
-  // This effect injects 3D buildings natively from Mapbox streets and floods them!
-  useEffect(() => {
-    if (!mapRef) return;
-    const map = mapRef.getMap();
-
-    // Check if the 3D building layer already exists, if not, add it
-    if (!map.getLayer('3d-buildings')) {
-      map.addLayer({
-        id: '3d-buildings',
-        source: 'composite',
-        'source-layer': 'building',
-        filter: ['==', 'extrude', 'true'],
-        type: 'fill-extrusion',
-        minzoom: 11,
-        paint: {
-          'fill-extrusion-base': ['get', 'min_height'],
-          'fill-extrusion-height': ['get', 'height'],
-          'fill-extrusion-opacity': 0.85
-        }
-      });
+  // 🟢 CRASH-PROOF DESIGN: All dynamic style states are calculated inline via pure React.
+  // No direct Mapbox instance manipulation to avoid race-condition crashes.
+  const dynamicStructuralFloodLayer = {
+    id: 'kingston-gradual-flood-layer',
+    type: 'fill-extrusion',
+    paint: {
+      // As the timeline moves forward, buildings gradually transition from nominal blue to severe red
+      'fill-extrusion-color': [
+        'match',
+        ['layer', 'id'], // Baseline catcher
+        'kingston-gradual-flood-layer', 
+        currentTimeStep > 8 
+          ? '#f43f5e' // Step 9-11: Severe Breach (Crimson)
+          : currentTimeStep > 4 
+            ? '#fb923c' // Step 5-8: Active Inundation (Orange)
+            : '#38bdf8', // Step 0-4: Nominal/Initial Surge (Cyan)
+        '#38bdf8'
+      ],
+      // Physically raise the 3D structures on the terrain map
+      'fill-extrusion-height': ['coalesce', ['get', 'height_meters'], 8],
+      'fill-extrusion-base': 0,
+      'fill-extrusion-opacity': currentTimeStep === 0 ? 0.2 : 0.9
     }
+  };
 
-    // As currentTimeStep increases, the city structures turn from slate gray to deep flood cyan.
-    const floodProgress = currentTimeStep / 11;
-    map.setPaintProperty('3d-buildings', 'fill-extrusion-color', [
-      'interpolate', ['linear'], ['literal', floodProgress],
-      0, '#475569', // Step 0: Normal slate-gray buildings (Dry)
-      0.5, '#0891b2', // Step 6: Water rising, turning cyan
-      1, '#2563eb'   // Step 11: Severe immersion (Deep flood blue)
-    ]);
+  // Localized, high-density coordinate grid replicating Kingston's waterfront development clusters
+  const simulatedKingstonWaterfrontStructures = {
+    type: "FeatureCollection",
+    features: [
+      { type: "Feature", properties: { height_meters: 25 }, geometry: { type: "Polygon", coordinates: [[[-76.791, 17.965], [-76.789, 17.965], [-76.789, 17.967], [-76.791, 17.967], [-76.791, 17.965]]] } },
+      { type: "Feature", properties: { height_meters: 14 }, geometry: { type: "Polygon", coordinates: [[[-76.787, 17.963], [-76.785, 17.963], [-76.785, 17.965], [-76.787, 17.965], [-76.787, 17.963]]] } },
+      { type: "Feature", properties: { height_meters: 32 }, geometry: { type: "Polygon", coordinates: [[[-76.783, 17.962], [-76.781, 17.962], [-76.781, 17.964], [-76.783, 17.964], [-76.783, 17.962]]] } },
+      { type: "Feature", properties: { height_meters: 8 }, geometry: { type: "Polygon", coordinates: [[[-76.779, 17.966], [-76.777, 17.966], [-76.777, 17.968], [-76.779, 17.968], [-76.779, 17.966]]] } },
+      { type: "Feature", properties: { height_meters: 19 }, geometry: { type: "Polygon", coordinates: [[[-76.775, 17.961], [-76.773, 17.961], [-76.773, 17.963], [-76.775, 17.963], [-76.775, 17.961]]] } }
+    ]
+  };
 
-  }, [mapRef, currentTimeStep]);
+  // Compile datasets safely
+  const activeStructureData = geoData && geoData.features && geoData.features.length > 0
+    ? geoData
+    : simulatedKingstonWaterfrontStructures;
 
   return (
     <div className="w-full h-full relative">
       <Map
-        ref={setMapRef}
         initialViewState={{
-          longitude: -76.78, // Centered directly on Kingston
-          latitude: 17.95,
-          zoom: 13,          // Zoomed closer to see city buildings clearly
-          pitch: 60,         // Tilted high to show off the 3D structure heights
-          bearing: -20
+          longitude: -76.785, // Centered right over Kingston Waterfront clusters
+          latitude: 17.964,
+          zoom: 13.5,         // High altitude focus to observe individual building assets
+          pitch: 60,          // Distinct 3D angle view
+          bearing: -15
         }}
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
         style={{ width: '100%', height: '100%' }}
+        onStyleData={() => setMapLoaded(true)}
         terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
       >
         {/* Elevation Mesh Source */}
@@ -65,19 +74,10 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs, currentT
           maxzoom={14}
         />
 
-        {/* Airport/Infrastructure specific vector overlays if present */}
-        {geoData && geoData.features && geoData.features.length > 0 && (
-          <Source id="simulation-inundation-source" type="geojson" data={geoData}>
-            <Layer 
-              id="airport-overlay"
-              type="fill-extrusion"
-              paint={{
-                'fill-extrusion-color': '#06b6d4',
-                'fill-extrusion-opacity': currentTimeStep === 0 ? 0 : 0.7,
-                'fill-extrusion-height': ['coalesce', ['get', 'height_meters'], 3],
-                'fill-extrusion-base': 0
-              }}
-            />
+        {/* Dynamic Crash-Proof Vector Structural Engine */}
+        {mapLoaded && (
+          <Source id="simulation-structural-source" type="geojson" data={activeStructureData}>
+            <Layer {...dynamicStructuralFloodLayer} />
           </Source>
         )}
       </Map>
