@@ -507,7 +507,7 @@ export default function App() {
         }
       }
 
-      // Cap the final threat index at 11 to match Mapbox
+      // Cap the final threat index at 11
       const finalThreatIndex = Math.min(liveThreat, 11);
 
       return {
