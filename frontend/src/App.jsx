@@ -288,15 +288,20 @@ export default function App() {
       if (currentStepValue >= 11) {
         clearInterval(tickerRef.current);
 
-        // FIX: Directly calling your useAuraData context setter to slide the panel visible
-        if (setters && typeof setters.setIsTranscriberOpen === 'function') {
-          setters.setIsTranscriberOpen(true); 
+        // FORCE DISCLOSURE LAYER OPEN: Find the details component
+        const layoutPanels = Array.from(document.querySelectorAll('details'));
+        const transcriberPanel = layoutPanels.find(el => 
+          el.querySelector('h2')?.textContent?.includes('LOGISTICS TRANSCRIBER')
+        );
+
+        if (transcriberPanel) {
+          // Navigate native browser 
+          transcriberPanel.open = true;
+          console.log("Aura Automation: Successfully forced Logistics Transcriber open attribute.");
         }
 
-        // 600ms UI buffer allows your layout panel CSS transition to settle before text populates
+        // Step 2: Small UI buffer to allow layout panel transition to slide clear
         setTimeout(async () => {
-          
-          // FIX: Vocabulary optimized to trigger the "Severe Flooding" zero-shot playbook classification matrix
           const incidentReport = "CRITICAL INUNDATION: Severe coastal flooding and flash surge overtopping the entire Palisadoes sector. Massive sea water drowning out lower surface zones.";
           
           setReportText(incidentReport);
@@ -305,7 +310,7 @@ export default function App() {
           try {
             let tacticalPlaybook = "";
             
-            // Push through your edgeEngine triage routers
+            // Step 3: Push through the core Flask backend triage engine
             if (globalState.airGapped) {
               const result = await runLocalTriage(incidentReport, globalState);
               tacticalPlaybook = result.actionable_tactical_playbook;
@@ -325,7 +330,7 @@ export default function App() {
               tacticalPlaybook = resData.actionable_tactical_playbook;
             }
 
-            // Chain playbook string to broadcast route for text-to-speech audio streams
+            // Step 4: Chain text to Route #6 for authentic ElevenLabs audio stream
             const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
             
             try {
@@ -346,22 +351,20 @@ export default function App() {
                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
               }
             } catch (audioErr) {
-              console.warn("ElevenLabs bridge bypassed, falling back to local speech synth synthesis:", audioErr);
+              console.warn("ElevenLabs audio connection bypassed, dropping to local speech synth:", audioErr);
               window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
             }
 
-            // Fire standard browser notification view window
+            // Step 5: Display custom Alert popup overlay window to user
             alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
             
-            // Post-alert orchestration adjustments
-            if (setters && typeof setters.setIsTranscriberOpen === 'function') {
-              setters.setIsTranscriberOpen(false);
-            }
+            // Step 6: Post-alert cleanup - slide closed the analysis/transcriber and expose paths
+            if (transcriberPanel) transcriberPanel.open = false;
             setShowImpactAnalysis(false); 
-            setShowRoutingLayer(true); // Exposes interactive routing lines onto the Map canvas layout
+            setShowRoutingLayer(true);   // Automatically maps paths from /api/v1/spatial/mutual-aid-paths
             
           } catch (err) {
-            console.error("Automated simulation orchestration execution failure:", err);
+            console.error("Automated triage integration runner failure:", err);
           } finally {
             setIsProcessing(false);
           }
