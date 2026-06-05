@@ -382,6 +382,7 @@ export default function App() {
           /* SWAPPED MAP VIEWPORT: 3D Esri / Satellite Terrain Engine */
           <ThreeDSimulationPage 
             currentTimeStep={currentTimeStep}
+            geoData={geoJson?.structuresGeoJson}
             simulationArgs={{
               slrMeters: globalState.slrMeters,
               windSpeed: globalState.windSpeed,
