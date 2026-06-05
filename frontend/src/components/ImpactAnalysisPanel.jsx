@@ -30,7 +30,7 @@ export function ImpactAnalysisPanel({
             ArcGIS Infrastructure Impact Engine
           </h2>
           <p className="text-[9px] text-slate-400 uppercase mt-0.5">
-            Active Dataset: Houston Structural Sample Extents
+            Active Dataset: Jamaica Structural Sample
           </p>
         </div>
         <button 
