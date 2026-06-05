@@ -238,21 +238,22 @@ export default function App() {
     });
   };
 
-  // LIVE INTERACTIVE TIMELINE ORCHESTRATOR WITH GENUINE ELEVENLABS AUDIO CHAIN
-  // LIVE INTERACTIVE TIMELINE ORCHESTRATOR WITH PANEL FOCUS & ELEVENLABS VOICE
+  // LIVE INTERACTIVE TIMELINE ORCHESTRATOR (FIXED PANEL FOCUS & FLOODING MATCH)
   const triggerResilientOrchestrationStory = () => {
     if (tickerRef.current) clearInterval(tickerRef.current);
 
+    // Coordinate through your context state modifiers
     setters.setIsSimulating(true);
     setters.setWindSpeed(88);
     setters.setSlrMeters(2.5);
     setters.setHurricaneIntensity(5);
+    
+    // Set local layout visibility configurations
     setShowImpactAnalysis(true);
     setShowRoutingLayer(false); // Hide mutual aid routes until alert is resolved
     setCurrentTimeStep(0);
     setCurrentAlert("Category 4 Hurricane Outer Bands reaching Jamaica. Commencing live operational monitoring.");
 
-    // Simple opening browser announcement to signal the start of the simulation loop
     const alertText = "Emergency operations engaged. Initializing interactive storm surge timeline tracking.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
@@ -287,23 +288,24 @@ export default function App() {
       if (currentStepValue >= 11) {
         clearInterval(tickerRef.current);
 
-        // Step 1: Open the transcription panel interface so the user sees the action happen
-        if (setters.setIsTranscriberOpen) {
+        // FIX: Directly calling your useAuraData context setter to slide the panel visible
+        if (setters && typeof setters.setIsTranscriberOpen === 'function') {
           setters.setIsTranscriberOpen(true); 
-        } else if (setters.setActivePanel) {
-          setters.setActivePanel("transcriber");
         }
 
-        // Step 2: Small UI buffer to let the panel transition slide open smoothly before typing begins
+        // 600ms UI buffer allows your layout panel CSS transition to settle before text populates
         setTimeout(async () => {
-          const incidentReport = "Palisadoes road link completely submerged down south. Coastal defenses breached near Rockfort, grid isolation requested.";
+          
+          // FIX: Vocabulary optimized to trigger the "Severe Flooding" zero-shot playbook classification matrix
+          const incidentReport = "CRITICAL INUNDATION: Severe coastal flooding and flash surge overtopping the entire Palisadoes sector. Massive sea water drowning out lower surface zones.";
+          
           setReportText(incidentReport);
           setIsProcessing(true);
 
           try {
             let tacticalPlaybook = "";
             
-            // Step 3: Push through the core Flask backend triage engine
+            // Push through your edgeEngine triage routers
             if (globalState.airGapped) {
               const result = await runLocalTriage(incidentReport, globalState);
               tacticalPlaybook = result.actionable_tactical_playbook;
@@ -323,8 +325,7 @@ export default function App() {
               tacticalPlaybook = resData.actionable_tactical_playbook;
             }
 
-            // Step 4: Chain text to Route #6 for ElevenLabs audio stream
-            // Falls back to exact matrix text if server isn't hit: "ACTIVATE PROTOCOL AMPHIBIOUS-SHIELD..."
+            // Chain playbook string to broadcast route for text-to-speech audio streams
             const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
             
             try {
@@ -345,24 +346,26 @@ export default function App() {
                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
               }
             } catch (audioErr) {
-              console.warn("ElevenLabs audio connection bypassed, dropping to local speech synth:", audioErr);
+              console.warn("ElevenLabs bridge bypassed, falling back to local speech synth synthesis:", audioErr);
               window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
             }
 
-            // Step 5: Display custom Alert popup overlay window to user
+            // Fire standard browser notification view window
             alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
             
-            // Step 6: Post-alert cleanup - slide closed the analysis/transcriber and expose paths
-            if (setters.setIsTranscriberOpen) setters.setIsTranscriberOpen(false);
+            // Post-alert orchestration adjustments
+            if (setters && typeof setters.setIsTranscriberOpen === 'function') {
+              setters.setIsTranscriberOpen(false);
+            }
             setShowImpactAnalysis(false); 
-            setShowRoutingLayer(true);   // Automatically maps paths from /api/v1/spatial/mutual-aid-paths
+            setShowRoutingLayer(true); // Exposes interactive routing lines onto the Map canvas layout
             
           } catch (err) {
-            console.error("Automated triage integration runner failure:", err);
+            console.error("Automated simulation orchestration execution failure:", err);
           } finally {
             setIsProcessing(false);
           }
-        }, 600); // 600ms delay matches standard CSS side-panel slide transition speeds
+        }, 600);
       }
     }, 2000);
   };
