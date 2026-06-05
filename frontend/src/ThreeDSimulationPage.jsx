@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 
-// 3D Vector Water extrusion configuration
+// 3D Vector Water configuration
 const extrusionLayerStyle = {
   id: 'inundation-3d-layer',
   type: 'fill-extrusion',
@@ -16,29 +16,40 @@ const extrusionLayerStyle = {
   }
 };
 
-// Raster styling overlay for generated GeoTIFF
-const rasterFloodLayerStyle = {
-  id: 'jamaica-raster-flood-layer',
-  type: 'raster',
-  paint: {
-    // 0.65 opacity gives an unobstructed look at underlying buildings/infrastructure
-    'raster-opacity': 0.65,
-    // Sharpens the binary cells from python raster output
-    'raster-resampling': 'nearest'
-  }
-};
-
-export default function ThreeDSimulationPage({ geoData, simulationArgs }) {
+export default function ThreeDSimulationPage({ geoData, simulationArgs, currentTimeStep = 0 }) {
   const [mapLoaded, setMapLoaded] = useState(false);
+
+  // Dynamic style calculation tied to the timeline slider
+  const rasterFloodLayerStyle = {
+    id: 'jamaica-raster-flood-layer',
+    type: 'raster',
+    paint: {
+      // 1. Isolate the binary values: 0 (dry land) is hidden, 1 (flooded) gets a neon cyan tint
+      'raster-color': [
+        'interpolate', ['linear'], ['raster-value'],
+        0, 'rgba(0, 0, 0, 0)',
+        1, 'rgba(6, 182, 212, 0.8)' 
+      ],
+      'raster-color-range': [0, 1],
+
+      // 2. Dynamic Opacity Engine: Maps the 0-11 step timeline linearly to visibility
+      'raster-opacity': currentTimeStep === 0 
+        ? 0 
+        : (currentTimeStep / 11) * 0.85,
+
+      'raster-fade-duration': 300,
+      'raster-resampling': 'nearest'
+    }
+  };
 
   return (
     <div className="w-full h-full relative">
       <Map
         initialViewState={{
-          longitude: -77.2975, // Shifted slightly to center the whole island matrix
+          longitude: -77.2975, 
           latitude: 18.1096,
-          zoom: 8.5,           // Pulled back to encompass full regional scope
-          pitch: 50,           // Tilted for topographic visualization
+          zoom: 8.5,           
+          pitch: 50,           
           bearing: 0
         }}
         mapboxAccessToken={MAPBOX_TOKEN}
@@ -66,11 +77,12 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs }) {
             ]}
             tileSize={256}
           >
+            {/* re-evaluate style when currentTimeStep changes */}
             <Layer {...rasterFloodLayerStyle} />
           </Source>
         )}
 
-        {/* Existing: Render 3D vector features if passed into data fields */}
+        {/*Render 3D vector features if passed into data fields */}
         {mapLoaded && geoData && geoData.features && (
           <Source id="simulation-inundation-source" type="geojson" data={geoData}>
             <Layer {...extrusionLayerStyle} />

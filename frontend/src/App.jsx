@@ -381,6 +381,7 @@ export default function App() {
         {globalState.isSimulating ? (
           /* SWAPPED MAP VIEWPORT: 3D Esri / Satellite Terrain Engine */
           <ThreeDSimulationPage 
+            currentTimeStep={currentTimeStep}
             simulationArgs={{
               slrMeters: globalState.slrMeters,
               windSpeed: globalState.windSpeed,
