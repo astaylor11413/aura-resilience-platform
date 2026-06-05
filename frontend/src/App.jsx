@@ -239,6 +239,7 @@ export default function App() {
   };
 
   // LIVE INTERACTIVE TIMELINE ORCHESTRATOR WITH GENUINE ELEVENLABS AUDIO CHAIN
+  // LIVE INTERACTIVE TIMELINE ORCHESTRATOR WITH PANEL FOCUS & ELEVENLABS VOICE
   const triggerResilientOrchestrationStory = () => {
     if (tickerRef.current) clearInterval(tickerRef.current);
 
@@ -251,7 +252,7 @@ export default function App() {
     setCurrentTimeStep(0);
     setCurrentAlert("Category 4 Hurricane Outer Bands reaching Jamaica. Commencing live operational monitoring.");
 
-    // Simple opening browser announcement
+    // Simple opening browser announcement to signal the start of the simulation loop
     const alertText = "Emergency operations engaged. Initializing interactive storm surge timeline tracking.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
@@ -284,75 +285,84 @@ export default function App() {
 
       // Trigger final phase when timeline reaches its peak
       if (currentStepValue >= 11) {
-        // Step 1: Simulate user typing or injecting the ground-truth problem
-        const incidentReport = "Palisadoes road link completely submerged down south. Coastal defenses breached near Rockfort, grid isolation requested.";
-        setReportText(incidentReport);
-        setIsProcessing(true);
+        clearInterval(tickerRef.current);
 
-        try {
-          let tacticalPlaybook = "";
-          
-          // Step 2: Push through the core Flask backend triage engine
-          if (globalState.airGapped) {
-            const result = await runLocalTriage(incidentReport, globalState);
-            tacticalPlaybook = result.actionable_tactical_playbook;
-            if (result.matched_node_threat_index !== null) {
-              setters.setActiveThreatIndex(result.matched_node_threat_index);
-            }
-          } else {
-            const formData = new FormData();
-            formData.append('text', incidentReport);
-            formData.append('air_gapped', 'false');
-            
-            const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
-              method: 'POST',
-              body: formData
-            });
-            const resData = await response.json();
-            tacticalPlaybook = resData.actionable_tactical_playbook;
-          }
+        // Step 1: Open the transcription panel interface so the user sees the action happen
+        if (setters.setIsTranscriberOpen) {
+          setters.setIsTranscriberOpen(true); 
+        } else if (setters.setActivePanel) {
+          setters.setActivePanel("transcriber");
+        }
 
-          // Step 3: Chain text to Route #6 (/api/v1/voice/broadcast) for authentic ElevenLabs audio stream
-          const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
-          
+        // Step 2: Small UI buffer to let the panel transition slide open smoothly before typing begins
+        setTimeout(async () => {
+          const incidentReport = "Palisadoes road link completely submerged down south. Coastal defenses breached near Rockfort, grid isolation requested.";
+          setReportText(incidentReport);
+          setIsProcessing(true);
+
           try {
-            const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ text: voiceBroadcastText })
-            });
-
-            // Check if backend returned valid file stream or triggered browser fallback string info
-            if (audioResponse.ok && audioResponse.headers.get('content-type')?.includes('audio/mpeg')) {
-              const audioBlob = await audioResponse.blob();
-              const audioUrl = URL.createObjectURL(audioBlob);
-              const audio = new Audio(audioUrl);
-              
-              // Play authentic dialect voice file
-              await audio.play();
+            let tacticalPlaybook = "";
+            
+            // Step 3: Push through the core Flask backend triage engine
+            if (globalState.airGapped) {
+              const result = await runLocalTriage(incidentReport, globalState);
+              tacticalPlaybook = result.actionable_tactical_playbook;
+              if (result.matched_node_threat_index !== null) {
+                setters.setActiveThreatIndex(result.matched_node_threat_index);
+              }
             } else {
-              // Fallback to standard web voice if backend key isn't deployed or error returns
+              const formData = new FormData();
+              formData.append('text', incidentReport);
+              formData.append('air_gapped', 'false');
+              
+              const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
+                method: 'POST',
+                body: formData
+              });
+              const resData = await response.json();
+              tacticalPlaybook = resData.actionable_tactical_playbook;
+            }
+
+            // Step 4: Chain text to Route #6 for ElevenLabs audio stream
+            // Falls back to exact matrix text if server isn't hit: "ACTIVATE PROTOCOL AMPHIBIOUS-SHIELD..."
+            const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
+            
+            try {
+              const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: voiceBroadcastText })
+              });
+
+              if (audioResponse.ok && audioResponse.headers.get('content-type')?.includes('audio/mpeg')) {
+                const audioBlob = await audioResponse.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                await audio.play();
+              } else {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
+              }
+            } catch (audioErr) {
+              console.warn("ElevenLabs audio connection bypassed, dropping to local speech synth:", audioErr);
               window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
             }
-          } catch (audioErr) {
-            console.warn("ElevenLabs audio stream chain failed, falling back to local TTS:", audioErr);
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
-          }
 
-          // Step 4: Display custom Alert popup overlay window to user
-          alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
-          
-          // Step 5: Post-alert cleanup - instantly slide open mutual aid vectors and maps
-          setShowImpactAnalysis(false); 
-          setShowRoutingLayer(true);   // renders paths from `/api/v1/spatial/mutual-aid-paths`
-          
-        } catch (err) {
-          console.error("Automated triage integration runner failure:", err);
-        } finally {
-          setIsProcessing(false);
-        }
+            // Step 5: Display custom Alert popup overlay window to user
+            alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
+            
+            // Step 6: Post-alert cleanup - slide closed the analysis/transcriber and expose paths
+            if (setters.setIsTranscriberOpen) setters.setIsTranscriberOpen(false);
+            setShowImpactAnalysis(false); 
+            setShowRoutingLayer(true);   // Automatically maps paths from /api/v1/spatial/mutual-aid-paths
+            
+          } catch (err) {
+            console.error("Automated triage integration runner failure:", err);
+          } finally {
+            setIsProcessing(false);
+          }
+        }, 600); // 600ms delay matches standard CSS side-panel slide transition speeds
       }
     }, 2000);
   };
