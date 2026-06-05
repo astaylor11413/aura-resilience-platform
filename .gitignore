@@ -1,1 +1,11 @@
 .env
+
+# Block large raw geospatial data files except flood layer
+config/*.tif
+working_dir/
+
+frontend/public/layers/*
+!frontend/public/layers/jamaica_flood_zone.tif
+
+# Block any sensitive API credentials or service account files
+config/*.json

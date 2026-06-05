@@ -12,3 +12,8 @@ transformers==4.38.1
 accelerate>=0.27.0
 Pillow==10.2.0
 gunicorn==21.2.0
+# Spatial I/O & Core Arrays
+rasterio==1.3.9
+# Hydrology & Terrain Processing
+richdem==0.3.4
+whitebox==2.3.0
