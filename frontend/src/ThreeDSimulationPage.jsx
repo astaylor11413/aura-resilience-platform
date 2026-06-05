@@ -24,10 +24,10 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs, currentT
     <div className="w-full h-full relative">
       <Map
         initialViewState={{
-          longitude: -77.2975,
-          latitude: 18.1096,
-          zoom: 8.5,
-          pitch: 50,
+          longitude: -76.78, // Centered right on Kingston Harbor
+          latitude: 17.95,
+          zoom: 11.5,        // Zoomed in close enough to see streets and coastlines
+          pitch: 55,
           bearing: 0
         }}
         mapboxAccessToken={MAPBOX_TOKEN}
@@ -59,26 +59,17 @@ export default function ThreeDSimulationPage({ geoData, simulationArgs, currentT
               id="jamaica-raster-flood-layer"
               type="raster"
               paint={{
-                // 1. Isolate binary data: 0 is clear, 1 is a bright cyan surge overlay
-                'raster-color': [
-                  'interpolate', ['linear'], ['raster-value'],
-                  0, 'rgba(0, 0, 0, 0)',
-                  1, 'rgba(6, 182, 212, 0.85)'
-                ],
-                'raster-color-range': [0, 1],
-
-                // 2. Inline Calculation Engine (Forces Mapbox to redraw on every state change)
+                //TEST: Bypass data cell reading and fade the entire file straight in/out
                 'raster-opacity': currentTimeStep === 0
                   ? 0
                   : (currentTimeStep / 11) * 0.85,
 
-                'raster-fade-duration': 200,
-                'raster-resampling': 'nearest'
+                'raster-fade-duration': 100
               }}
             />
           </Source>
         )}
-      
+
 
         {/*Render 3D vector features if passed into data fields */}
         {mapLoaded && geoData && geoData.features && (
