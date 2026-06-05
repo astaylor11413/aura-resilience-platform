@@ -499,7 +499,7 @@ export default function App() {
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
 
-      {/* 🟢 REAL-TIME EMERGENCY SITUATION READOUT BANNER */}
+      {/*REAL-TIME EMERGENCY SITUATION READOUT BANNER */}
       {globalState.isSimulating && currentAlert && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-11/12 max-w-2xl bg-slate-950/95 border border-cyan-500/40 text-cyan-400 px-5 py-3.5 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] backdrop-blur-md flex items-center gap-4 pointer-events-auto animate-pulse">
           <div className="h-2 w-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
@@ -509,81 +509,85 @@ export default function App() {
 
       {/* MAP UNDERLAY */}
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
-        {globalState.isSimulating ? (
-          /* SWAPPED MAP VIEWPORT: 3D Esri / Satellite Terrain Engine */
-          <ThreeDSimulationPage
-            currentTimeStep={currentTimeStep}
-            geoData={geoJson?.structuresGeoJson}
-            substationData={sanitizedSubstations}
-            simulationArgs={{
-              slrMeters: globalState.slrMeters,
-              windSpeed: globalState.windSpeed,
-              threatIndex: globalState.activeThreatIndex
-            }}
-          />
-        ) : (
-          /* DEFAULT MAP VIEWPORT: Optimized Flat Operations Map */
-          <Map
-            {...viewState}
-            ref={mapRef}
-            onMove={evt => setViewState(evt.viewState)}
-            mapboxAccessToken={MAPBOX_TOKEN}
-            mapStyle="mapbox://styles/mapbox/dark-v11"
-            style={{ width: '100%', height: '100%' }}
-          >
-            <Source id="inundation-data" type="geojson" data={sanitizedInundation}>
-              <Layer {...inundationLayer} />
+        <Map
+          {...viewState}
+          ref={mapRef}
+          onMove={evt => setViewState(evt.viewState)}
+          mapboxAccessToken={MAPBOX_TOKEN}
+          mapStyle="mapbox://styles/mapbox/dark-v11"
+          style={{ width: '100%', height: '100%' }}
+        >
+          {/* 1. Storm Surge Inundation Polygons */}
+          <Source id="inundation-data" type="geojson" data={sanitizedInundation}>
+            <Layer {...inundationLayer} />
+          </Source>
+
+          {/* 2. Mutual Aid Routes (Renders instantly post-alert) */}
+          {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
+            <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
+              <Layer {...routingLayer} />
+              <Layer
+                id="routing-labels"
+                type="symbol"
+                layout={{
+                  'text-field': ['get', 'urgency'],
+                  'text-size': 10,
+                  'text-offset': [0, -1],
+                  'text-anchor': 'bottom',
+                  'symbol-placement': 'line'
+                }}
+                paint={{ 'text-color': '#ffffff' }}
+              />
+              <Layer
+                id="routing-arrows"
+                type="symbol"
+                layout={{
+                  'symbol-placement': 'line',
+                  'symbol-spacing': 50,
+                  'text-field': '▶',
+                  'text-size': 12,
+                  'text-keep-upright': true
+                }}
+                paint={{ 'text-color': '#ffffff' }}
+              />
             </Source>
+          )}
 
-            {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
-              <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
-                <Layer {...routingLayer} />
-                <Layer
-                  id="routing-labels"
-                  type="symbol"
-                  layout={{
-                    'text-field': ['get', 'urgency'],
-                    'text-size': 10,
-                    'text-offset': [0, -1],
-                    'text-anchor': 'bottom',
-                    'symbol-placement': 'line'
-                  }}
-                  paint={{ 'text-color': '#ffffff' }}
-                />
-                <Layer
-                  id="routing-arrows"
-                  type="symbol"
-                  layout={{
-                    'symbol-placement': 'line',
-                    'symbol-spacing': 50,
-                    'text-field': '▶',
-                    'text-size': 12,
-                    'text-keep-upright': true
-                  }}
-                  paint={{ 'text-color': '#ffffff' }}
-                />
-              </Source>
-            )}
-
-            {showMarineLayer && activeMarineFeatures.length > 0 && (
-              <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
-                <Layer {...marinePolygonLayer} />
-                <Layer {...marineGlowLayer} />
-              </Source>
-            )}
-
-            <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
-              <Layer {...substationLayer} />
+          {/* 3. Oceanographic anomalies */}
+          {showMarineLayer && activeMarineFeatures.length > 0 && (
+            <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
+              <Layer {...marinePolygonLayer} />
+              <Layer {...marineGlowLayer} />
             </Source>
+          )}
 
+          {/* 4. GNN SUBSTATION NODES - RENDERED DIRECTLY TO DARK MAP BASE */}
+          <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
+            <Layer {...substationLayer} />
+          </Source>
 
-            {showImpactAnalysis && geoJson?.structuresGeoJson && (
-              <Source id="fema-structures" type="geojson" data={geoJson.structuresGeoJson}>
-                <Layer {...usaStructuresLayerConfig} />
-                <Layer {...structuralFootprintLayer} id="usa-structures-base" />
-              </Source>
-            )}
-          </Map>
+          {/* 5. 3D STRUCTURAL EXTRUSIONS LAYER - RUNS DURING SIMULATION TIMELINE */}
+          {showImpactAnalysis && geoJson?.structuresGeoJson && (
+            <Source id="fema-structures" type="geojson" data={geoJson.structuresGeoJson}>
+              <Layer {...usaStructuresLayerConfig} />
+              <Layer {...structuralFootprintLayer} id="usa-structures-base" />
+            </Source>
+          )}
+        </Map>
+
+        {/* 3D overlay blending for atmospheric/particle filters */}
+        {globalState.isSimulating && typeof ThreeDSimulationPage === 'function' && (
+          <div className="absolute inset-0 z-10 pointer-events-none mix-blend-screen opacity-40">
+             <ThreeDSimulationPage 
+               currentTimeStep={currentTimeStep}
+               geoData={geoJson?.structuresGeoJson}
+               simulationArgs={{
+                 slrMeters: globalState.slrMeters,
+                 windSpeed: globalState.windSpeed,
+                 threatIndex: globalState.activeThreatIndex
+               }}
+             />
+          </div>
         )}
       </div>
 
