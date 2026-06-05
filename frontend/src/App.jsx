@@ -148,7 +148,7 @@ const getLogisticsBlurb = (facilityName, urgency) => {
 export default function App() {
   // Global context destructuring
   const { state: globalState, setters, data, geoJson } = useAuraData();
-  
+
   // Local UI and telemetry states
   const [reportText, setReportText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -215,11 +215,11 @@ export default function App() {
       type: 'fill-extrusion',
       paint: {
         'fill-extrusion-color': depthFactor > 0.9
-          ? '#f43f5e' 
+          ? '#f43f5e'
           : depthFactor > 0.6
-            ? '#fb923c' 
+            ? '#fb923c'
             : depthFactor > 0.3
-              ? '#facc15' 
+              ? '#facc15'
               : '#38bdf8',
         'fill-extrusion-height': ['coalesce', ['get', 'height_meters'], 4],
         'fill-extrusion-base': 0,
@@ -247,7 +247,7 @@ export default function App() {
     setters.setWindSpeed(88);
     setters.setSlrMeters(2.5);
     setters.setHurricaneIntensity(5);
-    
+
     // Set local layout visibility configurations
     setShowImpactAnalysis(true);
     setShowRoutingLayer(false); // Hide mutual aid routes until alert is resolved
@@ -268,11 +268,11 @@ export default function App() {
 
     tickerRef.current = setInterval(async () => {
       let currentStepValue;
-      
+
       setCurrentTimeStep(prevStep => {
         const nextStep = prevStep + 1;
         currentStepValue = nextStep;
-        
+
         const matchingMilestone = simulationTimeline.find(item => item.step === nextStep);
         if (matchingMilestone) {
           setCurrentAlert(matchingMilestone.alert);
@@ -288,22 +288,21 @@ export default function App() {
       if (currentStepValue >= 11) {
         clearInterval(tickerRef.current);
 
-        // FORCE DISCLOSURE LAYER OPEN: Find the details component
+        // FIX: Case-insensitive search to reliably grab the element node
         const layoutPanels = Array.from(document.querySelectorAll('details'));
-        const transcriberPanel = layoutPanels.find(el => 
-          el.querySelector('h2')?.textContent?.includes('LOGISTICS TRANSCRIBER')
-        );
+        const transcriberPanel = layoutPanels.find(el => {
+          const headingText = el.querySelector('h2')?.textContent?.toLowerCase() || '';
+          return headingText.includes('logistics transcriber');
+        });
 
         if (transcriberPanel) {
-          // Navigate native browser 
           transcriberPanel.open = true;
-          console.log("Aura Automation: Successfully forced Logistics Transcriber open attribute.");
+          console.log("🎯 Aura Automation: Successfully forced Logistics Transcriber open attribute.");
         }
 
-        // Step 2: Small UI buffer to allow layout panel transition to slide clear
+        // Step 2: Small 600ms UI buffer to allow your layout panel transition to slide clear
         setTimeout(async () => {
           const incidentReport = "CRITICAL INUNDATION: Severe coastal flooding and flash surge overtopping the entire Palisadoes sector. Massive sea water drowning out lower surface zones.";
-          
           setReportText(incidentReport);
           setIsProcessing(true);
 
@@ -367,7 +366,7 @@ export default function App() {
             console.error("Automated triage integration runner failure:", err);
           } finally {
             setIsProcessing(false);
-          }
+          }        
         }, 600);
       }
     }, 2000);
@@ -463,7 +462,7 @@ export default function App() {
   // --- DATA SANITIZATION FILTERS ---
   const sanitizedSubstations = useMemo(() => {
     if (globalState.airGapped) return { type: "FeatureCollection", features: processedSubstationFeatures };
-    
+
     const rawSubstations = data?.gridAssets || [];
     if (rawSubstations.length === 0 && processedSubstationFeatures.length > 0) {
       return { type: "FeatureCollection", features: processedSubstationFeatures };
@@ -499,7 +498,7 @@ export default function App() {
 
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
-      
+
       {/* 🟢 REAL-TIME EMERGENCY SITUATION READOUT BANNER */}
       {globalState.isSimulating && currentAlert && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-11/12 max-w-2xl bg-slate-950/95 border border-cyan-500/40 text-cyan-400 px-5 py-3.5 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] backdrop-blur-md flex items-center gap-4 pointer-events-auto animate-pulse">
@@ -512,7 +511,7 @@ export default function App() {
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         {globalState.isSimulating ? (
           /* SWAPPED MAP VIEWPORT: 3D Esri / Satellite Terrain Engine */
-          <ThreeDSimulationPage 
+          <ThreeDSimulationPage
             currentTimeStep={currentTimeStep}
             geoData={geoJson?.structuresGeoJson}
             substationData={sanitizedSubstations}
@@ -573,9 +572,10 @@ export default function App() {
               </Source>
             )}
 
-            <Source id="substation-data" type="geojson" data={sanstations => sanitizedSubstations}>
+            <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
               <Layer {...substationLayer} />
             </Source>
+
 
             {showImpactAnalysis && geoJson?.structuresGeoJson && (
               <Source id="fema-structures" type="geojson" data={geoJson.structuresGeoJson}>
@@ -589,7 +589,7 @@ export default function App() {
 
       {/* FOREGROUND HUD LAYOUT */}
       <div className="relative md:absolute inset-0 z-30 pt-[42vh] md:pt-0 p-4 md:p-6 pointer-events-none grid grid-cols-1 md:grid-cols-12 md:grid-rows-[auto_1fr_auto] h-full gap-4">
-        
+
         {/* HEADER BAR */}
         <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
           <div className="flex items-center gap-3">
@@ -728,7 +728,7 @@ export default function App() {
 
         {/* RIGHT INTERACTIVE COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-          
+
           {/* Dynamic Switch Panel Layout */}
           {!showImpactAnalysis ? (
             <>
