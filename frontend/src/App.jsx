@@ -158,12 +158,19 @@ export default function App() {
   const [showRoutingLayer, setShowRoutingLayer] = useState(false);
   const [showImpactAnalysis, setShowImpactAnalysis] = useState(false);
   const [currentTimeStep, setCurrentTimeStep] = useState(0);
+  const [currentAlert, setCurrentAlert] = useState(null);
 
   const mapRef = useRef(null);
+  const tickerRef = useRef(null);
 
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
+
+  // Clean up timers on component unmount
+  useEffect(() => {
+    return () => { if (tickerRef.current) clearInterval(tickerRef.current); };
+  }, []);
 
   // Model Warm-up
   useEffect(() => {
@@ -232,21 +239,46 @@ export default function App() {
     });
   };
 
+  // 🟢 LIVE INTERACTIVE TIMELINE ORCHESTRATOR
   const triggerResilientOrchestrationStory = () => {
-    setters.setIsSimulating(true);
-    setters.setWindSpeed(78);
-    setters.setSlrMeters(2.0);
-    setters.setHurricaneIntensity(5);
+    if (tickerRef.current) clearInterval(tickerRef.current);
 
-    const alertText = "Emergency: Hurricane force winds detected. Automating grid isolation and shoreline surge protection protocols.";
+    setters.setIsSimulating(true);
+    setters.setWindSpeed(88);
+    setters.setSlrMeters(2.5);
+    setters.setHurricaneIntensity(5);
+    setShowImpactAnalysis(true);
+    setCurrentTimeStep(0);
+    setCurrentAlert("⚠️ Category 4 Hurricane Outer Bands reaching Jamaica. Commencing live operational monitoring.");
+
+    const alertText = "Emergency operations engaged. Initializing interactive storm surge timeline tracking.";
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(alertText));
 
-    const marineSource = globalState.airGapped ? runLocalMarineTelemetry() : (data?.marineAnomalies || []);
-    const criticalNode = Array.isArray(marineSource) ? marineSource.find(m => m.properties?.ai_watchdog_status?.includes("CRITICAL")) : null;
-    if (criticalNode?.geometry?.coordinates) {
-      const [lng, lat] = criticalNode.geometry.coordinates;
-      mapRef.current?.flyTo({ center: [lng, lat], zoom: 12, essential: true });
-    }
+    const simulationTimeline = [
+      { step: 1, alert: "⚠️ Storm front tightening. Sea state telemetry indices elevating across the south shelf." },
+      { step: 3, alert: "🌊 Storm surge rising to 1.5m. Palisadoes runway/airport link perimeters experiencing initial breach." },
+      { step: 5, alert: "🚨 CRITICAL: Kingston Harbor waterfront layout reporting surge immersion. Localized power nodes offline." },
+      { step: 7, alert: "📉 AI Triage Engine: High risk of structural asset failure predicted across lower grid boundaries." },
+      { step: 9, alert: "🛑 MAXIMUM BREACH: Surge peaking at 4.5m. Automating industrial utility isolation protocols." },
+      { step: 11, alert: "✅ Triage Complete. Crisis footprint successfully compiled. Standing by for relief deployment." }
+    ];
+
+    tickerRef.current = setInterval(() => {
+      setCurrentTimeStep(prevStep => {
+        const nextStep = prevStep + 1;
+        
+        const matchingMilestone = simulationTimeline.find(item => item.step === nextStep);
+        if (matchingMilestone) {
+          setCurrentAlert(matchingMilestone.alert);
+        }
+
+        if (nextStep >= 11) {
+          clearInterval(tickerRef.current);
+          return 11;
+        }
+        return nextStep;
+      });
+    }, 2000); // 2 seconds per stage transition step
   };
 
   const handleProcessTransmission = async () => {
@@ -376,6 +408,14 @@ export default function App() {
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
       
+      {/* 🟢 REAL-TIME EMERGENCY SITUATION READOUT BANNER */}
+      {globalState.isSimulating && currentAlert && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[100] w-11/12 max-w-2xl bg-slate-950/95 border border-cyan-500/40 text-cyan-400 px-5 py-3.5 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] backdrop-blur-md flex items-center gap-4 pointer-events-auto animate-pulse">
+          <div className="h-2 w-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+          <p className="text-xs font-mono tracking-wide leading-relaxed">{currentAlert}</p>
+        </div>
+      )}
+
       {/* MAP UNDERLAY */}
       <div className="absolute top-0 left-0 w-full h-[40vh] md:h-full z-0 pointer-events-auto">
         {globalState.isSimulating ? (
@@ -440,7 +480,7 @@ export default function App() {
               </Source>
             )}
 
-            <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
+            <Source id="substation-data" type="geojson" data={sanstations => sanitizedSubstations}>
               <Layer {...substationLayer} />
             </Source>
 
@@ -472,6 +512,8 @@ export default function App() {
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <button
               onClick={() => {
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentAlert(null);
                 if (globalState.isSimulating) {
                   setters.setIsSimulating(false);
                 }
@@ -509,6 +551,8 @@ export default function App() {
             </button>
             <button
               onClick={() => {
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentAlert(null);
                 if (window.confirm("CRITICAL: This will purge all local session data and reset AURA to factory settings. Continue?")) {
                   setters.resetAuraState();
                 }
@@ -606,7 +650,7 @@ export default function App() {
                     }}
                     className="w-full py-1.5 bg-rose-600 font-bold rounded uppercase tracking-wider text-white hover:bg-rose-500 transition-colors cursor-pointer pointer-events-auto text-[9px]"
                   >
-                    RUN_HYDRO_FLOOD_SIMULATION
+                    RUN FLOOD SIMULATION
                   </button>
                 </div>
               </HudPanel>
@@ -668,9 +712,15 @@ export default function App() {
           ) : (
             <ImpactAnalysisPanel
               currentTimeStep={currentTimeStep}
-              onTimeStepChange={setCurrentTimeStep}
+              onTimeStepChange={(newStep) => {
+                // If user touches slider manually, kill autopilot loop to prevent overriding them
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentTimeStep(newStep);
+              }}
               structuralStats={structuralStats}
               onClose={() => {
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentAlert(null);
                 setShowImpactAnalysis(false);
                 setters.setIsSimulating(false);
               }}
