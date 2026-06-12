@@ -690,10 +690,6 @@ export default function App() {
           </div>
 
           <HudPanel title="Environmental Vectors">
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{globalState.windSpeed} MPH</span></div>
-              <input type="range" min="10" max="100" value={globalState.windSpeed} onChange={(e) => setters.setWindSpeed(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
-            </div>
             <div className="space-y-1 pt-2">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{globalState.slrMeters}m</span></div>
               <input type="range" min="0" max="3" step="0.5" value={globalState.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
@@ -778,35 +774,6 @@ export default function App() {
                   >
                     RUN FLOOD SIMULATION
                   </button>
-                </div>
-              </HudPanel>
-
-              <HudPanel title="GNN Grid Analyzer">
-                <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-                  {(sanitizedSubstations.features || []).map(feat => {
-                    const props = feat.properties || {};
-                    const coords = feat.geometry?.coordinates;
-                    return (
-                      <details
-                        key={props.id}
-                        className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
-                        onToggle={(e) => {
-                          if (e.currentTarget.open && coords && !globalState.isSimulating) {
-                            handlePanToTarget(coords[0], coords[1]);
-                          }
-                        }}
-                      >
-                        <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
-                          <span>{props.name}</span>
-                          <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
-                        </summary>
-                        <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
-                          <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
-                          <div className="text-slate-500 text-[9px]">Routing: {props.power_routing || 'MAIN_LINE_FEED'}</div>
-                        </div>
-                      </details>
-                    );
-                  })}
                 </div>
               </HudPanel>
 
