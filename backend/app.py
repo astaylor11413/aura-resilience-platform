@@ -213,7 +213,6 @@ def simulate_inundation():
 
 # 5. Integrated Ingestion Pipeline Configuration Matrix
 TACTICAL_PLAYBOOK_MATRIX = {
-    {
   "Severe Flooding": {
     "playbook": "WARNIN: Di sea wall dem lick over and di water a rush in deep! Lock di automated micro-gates right now. Clear out di low road dem and make sure every single emergency truck drive go up pon di hill road dem before water trap dem.",
     "system_profile": "Severe Shoreline Surge / Inundation Event"
@@ -227,7 +226,7 @@ TACTICAL_PLAYBOOK_MATRIX = {
     "system_profile": "Physical Infrastructure Breach"
   }
 }
-}
+
 
 @app.route('/api/v1/voice/report', methods=['POST'])
 def transcribe_and_triage_report():
