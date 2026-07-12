@@ -1,5 +1,5 @@
 # Use an optimized, official light-weight base image
-FROM python:3.11-slim
+FROM python:3.10-slim
 
 # Prevent Python from writing pyc files to disk and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1
