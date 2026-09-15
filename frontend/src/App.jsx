@@ -688,7 +688,93 @@ export default function App() {
               System Reset
             </button>
           </div>
+          {/* Dynamic Switch Panel Layout */}
+          {!showImpactAnalysis ? (
+            <>
+              <HudPanel title="Storm Tracker">
+                <div className="text-[10px] text-slate-300 space-y-2">
+                  <p>No storm activity at this time.</p>            
+                </div>
+              </HudPanel>
+            </>
+          ) : (
+            <>
+            <ImpactAnalysisPanel
+              currentTimeStep={currentTimeStep}
+              onTimeStepChange={(newStep) => {
+                // If user touches slider manually, kill autopilot loop to prevent overriding them
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentTimeStep(newStep);
+              }}
+              structuralStats={structuralStats}
+              onClose={() => {
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentAlert(null);
+                setShowImpactAnalysis(false);
+                setters.setIsSimulating(false);
+              }}
+            />
+            <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
+                <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+                  {(activeRoutingGeoJson.features || []).map((route, i) => {
+                    const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
+                    const destShelter = route.properties?.destination_shelter || 'Unknown Shelter';
+                    const urgency = route.properties?.urgency || 'LOW';
+                    const blurb = getLogisticsBlurb(originKitchen, urgency);
 
+                    return (
+                      <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-emerald-400 font-bold">{originKitchen}</span>
+                          <span className="text-slate-500">→</span>
+                          <span className="text-purple-400 font-bold">{destShelter}</span>
+                        </div>
+                        <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
+                        <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
+                          {blurb.action}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </HudPanel>
+            </>
+          )}
+        </div>
+
+        {/* CENTER VISUAL ACCOMMODATION COUPLER */}
+        <div className="hidden md:block md:col-span-6" />
+
+        {/* RIGHT INTERACTIVE COLUMN */}
+        <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
+          <HudPanel title="JPS Grid Status">
+            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+              {processedSubstationFeatures.map(feat => {
+                const props = feat.properties || {};
+                const coords = feat.geometry?.coordinates;
+                return (
+                  <details
+                    key={props.id}
+                    className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                    onToggle={(e) => {
+                      if (e.currentTarget.open && coords) {
+                        handlePanToTarget(coords[0], coords[1]);
+                      }
+                    }}
+                  >
+                    <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
+                      <span>{props.name}</span>
+                      <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
+                    </summary>
+                    <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
+                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
+                      <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </HudPanel>
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1 pt-2">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{globalState.slrMeters}m</span></div>
@@ -749,103 +835,7 @@ export default function App() {
                 );
               })}
             </div>
-          </HudPanel>
-        </div>
-
-        {/* CENTER VISUAL ACCOMMODATION COUPLER */}
-        <div className="hidden md:block md:col-span-6" />
-
-        {/* RIGHT INTERACTIVE COLUMN */}
-        <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-          <HudPanel title="JPS Grid Status">
-            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-              {processedSubstationFeatures.map(feat => {
-                const props = feat.properties || {};
-                const coords = feat.geometry?.coordinates;
-                return (
-                  <details
-                    key={props.id}
-                    className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
-                    onToggle={(e) => {
-                      if (e.currentTarget.open && coords) {
-                        handlePanToTarget(coords[0], coords[1]);
-                      }
-                    }}
-                  >
-                    <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
-                      <span>{props.name}</span>
-                      <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
-                    </summary>
-                    <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
-                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
-                      <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
-                    </div>
-                  </details>
-                );
-              })}
-            </div>
-          </HudPanel>
-          {/* Dynamic Switch Panel Layout */}
-          {!showImpactAnalysis ? (
-            <>
-              <HudPanel title="System Operations Matrix">
-                <div className="text-[10px] text-slate-300 space-y-2">
-                  <p>Steady-state climate vectors active.</p>
-                  <button
-                    onClick={() => {
-                      setters.setIsSimulating(true);
-                      setters.setWindSpeed(90);
-                      setShowImpactAnalysis(true);
-                    }}
-                    className="w-full py-1.5 bg-rose-600 font-bold rounded uppercase tracking-wider text-white hover:bg-rose-500 transition-colors cursor-pointer pointer-events-auto text-[9px]"
-                  >
-                    RUN FLOOD SIMULATION
-                  </button>
-                </div>
-              </HudPanel>
-
-              <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
-                <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
-                  {(activeRoutingGeoJson.features || []).map((route, i) => {
-                    const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
-                    const destShelter = route.properties?.destination_shelter || 'Unknown Shelter';
-                    const urgency = route.properties?.urgency || 'LOW';
-                    const blurb = getLogisticsBlurb(originKitchen, urgency);
-
-                    return (
-                      <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-emerald-400 font-bold">{originKitchen}</span>
-                          <span className="text-slate-500">→</span>
-                          <span className="text-purple-400 font-bold">{destShelter}</span>
-                        </div>
-                        <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
-                        <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
-                          {blurb.action}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </HudPanel>
-            </>
-          ) : (
-            <ImpactAnalysisPanel
-              currentTimeStep={currentTimeStep}
-              onTimeStepChange={(newStep) => {
-                // If user touches slider manually, kill autopilot loop to prevent overriding them
-                if (tickerRef.current) clearInterval(tickerRef.current);
-                setCurrentTimeStep(newStep);
-              }}
-              structuralStats={structuralStats}
-              onClose={() => {
-                if (tickerRef.current) clearInterval(tickerRef.current);
-                setCurrentAlert(null);
-                setShowImpactAnalysis(false);
-                setters.setIsSimulating(false);
-              }}
-            />
-          )}
+          </HudPanel>          
         </div>
 
         {/* VOICE TRANSCRIPTION TRANSCRIBER PANEL */}
