@@ -757,7 +757,34 @@ export default function App() {
 
         {/* RIGHT INTERACTIVE COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-
+          <HudPanel title="JPS Grid Status">
+            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+              {processedSubstationFeatures.map(feat => {
+                const props = feat.properties || {};
+                const coords = feat.geometry?.coordinates;
+                return (
+                  <details
+                    key={props.id}
+                    className="bg-slate-900/50 p-2 rounded border border-white/5 cursor-pointer group"
+                    onToggle={(e) => {
+                      if (e.currentTarget.open && coords) {
+                        handlePanToTarget(coords[0], coords[1]);
+                      }
+                    }}
+                  >
+                    <summary className="text-[11px] font-mono text-emerald-400 list-none flex justify-between items-center select-none">
+                      <span>{props.name}</span>
+                      <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
+                    </summary>
+                    <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
+                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
+                      <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </HudPanel>
           {/* Dynamic Switch Panel Layout */}
           {!showImpactAnalysis ? (
             <>
