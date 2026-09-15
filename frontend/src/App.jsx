@@ -391,7 +391,9 @@ export default function App() {
     }, 2000);
   };
 
-  const handleProcessTransmission = async () => {
+  const handleProcessTransmission = async (e) => {
+    if (e && e.preventDefault) e.preventDefault(); // Prevents page reload
+
     if (!reportText.trim()) return;
     setIsProcessing(true);
 
