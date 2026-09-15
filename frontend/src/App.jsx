@@ -593,7 +593,7 @@ export default function App() {
                   'symbol-placement': 'line',
                   'symbol-spacing': 50,
                   'text-field': '▶',
-                  'text-size': 12,
+                  'text-size': 20,
                   'text-keep-upright': true
                 }}
                 paint={{ 'text-color': '#ffffff' }}
