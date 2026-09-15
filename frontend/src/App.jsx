@@ -777,11 +777,11 @@ export default function App() {
           </HudPanel>
           <HudPanel title="Environmental Vectors">
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{state.windSpeed} MPH</span></div>
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{globalState.windSpeed} MPH</span></div>
               <input type="range" min="10" max="100" value={globalState.windSpeed} onChange={(e) => setters.setWindSpeed(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
             </div>
             <div className="space-y-1 pt-2">
-              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{state.slrMeters}m</span></div>
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{globalState.slrMeters}m</span></div>
               <input type="range" min="0" max="3" step="0.5" value={globalState.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
             </div>
             {globalState.activeThreatIndex !== null && (
