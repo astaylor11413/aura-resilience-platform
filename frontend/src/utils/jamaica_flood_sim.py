@@ -16,13 +16,13 @@ wbt = whitebox.WhiteboxTools()
 wbt.set_verbose_mode(True) # Turned this ON so you can see exactly what the engine is doing!
 
 def reproject_to_meters(input_path, output_path, target_crs="EPSG:32618"):
-    logging.info("🌐 Checking coordinate reference system...")
+    logging.info("Checking coordinate reference system...")
     with rasterio.open(input_path) as src:
         if src.crs == target_crs:
             logging.info("DEM is already perfectly projected in meters.")
             return input_path
         
-        logging.info(f"🔄 Reprojecting DEM from {src.crs} to {target_crs} (UTM 18N)...")
+        logging.info(f"Reprojecting DEM from {src.crs} to {target_crs} (UTM 18N)...")
         transform, width, height = calculate_default_transform(
             src.crs, target_crs, src.width, src.height, *src.bounds
         )
@@ -49,7 +49,7 @@ def reproject_to_meters(input_path, output_path, target_crs="EPSG:32618"):
 
 def run_jamaica_simulation(dem_in, final_layer_out, surge_height_meters=3.5):
     start_time = time.time()
-    logging.info("🏝️ Beginning Jamaica Advanced Flood Simulation Pipeline...")
+    logging.info("Beginning Jamaica Advanced Flood Simulation Pipeline...")
 
     # 1. Force absolute system paths everywhere to prevent silent engine crashes
     base_dir = os.path.abspath("working_dir")
@@ -61,7 +61,7 @@ def run_jamaica_simulation(dem_in, final_layer_out, surge_height_meters=3.5):
     projected_dem = os.path.join(base_dir, "jam_projected.tif")
     filled = os.path.join(base_dir, "jam_filled.tif")
     fpointer = os.path.join(base_dir, "jam_flow_ptr.tif")
-    fac累 = os.path.join(base_dir, "jam_accum.tif")
+    fac = os.path.join(base_dir, "jam_accum.tif")
     streams = os.path.join(base_dir, "jam_streams.tif")
     hand = os.path.join(base_dir, "jam_hand.tif")
 
@@ -83,11 +83,11 @@ def run_jamaica_simulation(dem_in, final_layer_out, surge_height_meters=3.5):
 
         # Step 3: D8 Flow Accumulation (Uses i=)
         logging.info("Step 3/6: Generating network flow accumulation maps...")
-        wbt.d8_flow_accumulation(i=fpointer, output=fac累)
+        wbt.d8_flow_accumulation(i=fpointer, output=fac)
 
         # Step 4: Extract Streams
         logging.info("Step 4/6: Delineating primary river drainage channels...")
-        wbt.extract_streams(flow_accum=fac累, output=streams, threshold=1000.0)
+        wbt.extract_streams(flow_accum=fac, output=streams, threshold=1000.0)
 
         # Step 5: Elevation Above Stream / HAND
         logging.info("Step 5/6: Processing Height Above Nearest Drainage (HAND) relative heights...")
