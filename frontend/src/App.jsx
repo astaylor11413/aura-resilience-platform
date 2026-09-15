@@ -702,16 +702,17 @@ export default function App() {
             </button>
           </div>
           {/* Dynamic Switch Panel Layout */}
-          {!showImpactAnalysis ? (
-            <>
+          {<>
+          !showImpactAnalysis ? (
+            
               <HudPanel title="Storm Tracker">
                 <div className="text-[10px] text-slate-300 space-y-2">
                   <p>No storm activity at this time.</p>            
                 </div>
               </HudPanel>
-            </>
+            
           ) : (
-            <>
+            
             <ImpactAnalysisPanel
               currentTimeStep={currentTimeStep}
               onTimeStepChange={(newStep) => {
@@ -727,32 +728,31 @@ export default function App() {
                 setters.setIsSimulating(false);
               }}
             />
-            <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
-                <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
-                  {(activeRoutingGeoJson.features || []).map((route, i) => {
-                    const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
-                    const destShelter = route.properties?.destination_shelter || 'Unknown Shelter';
-                    const urgency = route.properties?.urgency || 'LOW';
-                    const blurb = getLogisticsBlurb(originKitchen, urgency);
-
-                    return (
-                      <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-emerald-400 font-bold">{originKitchen}</span>
-                          <span className="text-slate-500">→</span>
-                          <span className="text-purple-400 font-bold">{destShelter}</span>
-                        </div>
-                        <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
-                        <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
-                          {blurb.action}
-                        </div>
+          )
+          <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
+            <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
+                {(activeRoutingGeoJson.features || []).map((route, i) => {
+                  const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
+                  const destShelter = route.properties?.destination_shelter || 'Unknown Shelter';
+                  const urgency = route.properties?.urgency || 'LOW';
+                  const blurb = getLogisticsBlurb(originKitchen, urgency);
+                  return (
+                    <div key={i} className="bg-slate-900/50 p-3 rounded border border-white/10 text-[10px] font-mono">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-emerald-400 font-bold">{originKitchen}</span>
+                        <span className="text-slate-500">→</span>
+                        <span className="text-purple-400 font-bold">{destShelter}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              </HudPanel>
-            </>
-          )}
+                      <p className="text-slate-300 leading-tight mb-2 italic">"{blurb.text}"</p>
+                      <div className="bg-slate-950 p-1.5 rounded border border-purple-500/30 text-purple-300 font-bold uppercase tracking-wider text-[9px]">
+                        {blurb.action}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </HudPanel>
+          </>}
         </div>
 
         {/* CENTER VISUAL ACCOMMODATION COUPLER */}
