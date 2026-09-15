@@ -166,7 +166,7 @@ export default function App() {
   const [showImpactAnalysis, setShowImpactAnalysis] = useState(false);
   const [currentTimeStep, setCurrentTimeStep] = useState(0);
   const [currentAlert, setCurrentAlert] = useState(null);
-  const [triageResult, setTriageResult] = useState(null);
+  
 
   const mapRef = useRef(null);
   const tickerRef = useRef(null);
@@ -400,11 +400,7 @@ export default function App() {
     if (globalState.airGapped) {
       try {
         const result = await runLocalTriage(reportText, globalState);
-        //alert(`${result.actionable_tactical_playbook}`);
-        setTriageResult({
-        profile: "LOCAL TRIAGE COMPLETED",
-        playbook: result.actionable_tactical_playbook
-      });
+        alert(`${result.actionable_tactical_playbook}`);
         setters.setActiveThreatIndex(result.matched_node_threat_index);
       } catch (err) {
         console.error("Edge Engine Error:", err);
@@ -429,11 +425,7 @@ export default function App() {
         if (resData.matched_node_threat_index !== null) {
           setters.setActiveThreatIndex(resData.matched_node_threat_index);
         }
-        //alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
-        setTriageResult({
-        profile: resData.triage_incident_profile,
-        playbook: resData.actionable_tactical_playbook
-      });
+        alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
       }
     } catch (err) {
       console.error('Transmission processing failure:', err);
@@ -886,42 +878,6 @@ export default function App() {
           </HudPanel>
         </div>
       </div>
-      {triageResult && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-xl p-5 max-w-lg w-full space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="text-emerald-400 font-mono text-sm font-bold tracking-wider uppercase">
-                Tactical Playbook Advice
-              </h3>
-              <button
-                type="button"
-                onClick={() => setTriageResult(null)}
-                className="text-slate-400 hover:text-white font-mono text-xs px-2 py-1 bg-white/5 rounded"
-              >
-                ✕ CLOSE
-              </button>
-            </div>
-
-            {triageResult.profile && (
-              <div className="text-[11px] font-mono text-slate-300">
-                <span className="text-slate-500">INCIDENT PROFILE:</span> {triageResult.profile}
-              </div>
-            )}
-
-            <div className="bg-slate-950 p-3 rounded border border-white/5 text-xs text-slate-200 font-mono leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-              {triageResult.playbook}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setTriageResult(null)}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-xs transition-colors"
-            >
-              Acknowledge & Continue
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
