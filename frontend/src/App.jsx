@@ -591,9 +591,9 @@ export default function App() {
                 type="symbol"
                 layout={{
                   'symbol-placement': 'line',
-                  'symbol-spacing': 50,
+                  'symbol-spacing': 20,
                   'text-field': '▶',
-                  'text-size': 20,
+                  'text-size': 40,
                   'text-keep-upright': true
                 }}
                 paint={{ 'text-color': '#ffffff' }}
