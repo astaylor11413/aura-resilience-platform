@@ -570,72 +570,37 @@ export default function App() {
             <Layer {...inundationLayer} />
           </Source>
 
-          {/* 2. Mutual Aid Routes & Destination Markers */}
-{showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
-  <>
-    <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
-      <Layer {...routingLayer} />
-      <Layer
-        id="routing-labels"
-        type="symbol"
-        layout={{
-          'text-field': ['get', 'urgency'],
-          'text-size': 10,
-          'text-offset': [0, -1],
-          'text-anchor': 'bottom',
-          'symbol-placement': 'line'
-        }}
-        paint={{ 'text-color': '#ffffff' }}
-      />
-      <Layer
-        id="routing-arrows"
-        type="symbol"
-        layout={{
-          'symbol-placement': 'line',
-          'symbol-spacing': 50,
-          'text-field': '▶',
-          'text-size': 12,
-          'text-keep-upright': true
-        }}
-        paint={{ 'text-color': '#ffffff' }}
-      />
-    </Source>
-
-    {/* Destination Markers at Route Ends */}
-    {activeRoutingGeoJson.features.map((route, i) => {
-      const coords = route.geometry?.coordinates;
-      if (!coords || coords.length === 0) return null;
-
-      // Extract the last coordinate array [lng, lat] along the line
-      const endCoord = coords[coords.length - 1];
-      const destinationName = route.properties?.destination_shelter || 'Shelter Target';
-
-      return (
-        <Marker
-          key={`route-end-${i}`}
-          longitude={endCoord[0]}
-          latitude={endCoord[1]}
-          anchor="bottom"
-        >
-          <div className="flex flex-col items-center group pointer-events-auto cursor-pointer">
-            {/* Tooltip on Hover */}
-            <div className="hidden group-hover:block bg-slate-900/90 text-purple-300 font-mono text-[9px] px-2 py-1 rounded border border-purple-500/40 shadow-lg whitespace-nowrap mb-1">
-              📍 {destinationName}
-            </div>
-
-            {/* Custom Radar/Beacon Marker */}
-            <div className="relative flex items-center justify-center">
-              <span className="absolute h-6 w-6 rounded-full bg-purple-500/40 animate-ping" />
-              <div className="h-7 w-7 rounded-full bg-slate-950 border-2 border-purple-400 flex items-center justify-center text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.5)]">
-                <Utensils size={12} />
-              </div>
-            </div>
-          </div>
-        </Marker>
-      );
-    })}
-  </>
-)}
+          {/* 2. Mutual Aid Routes (Renders instantly post-alert) */}
+          {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
+            <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
+              <Layer {...routingLayer} />
+              <Layer
+                id="routing-labels"
+                type="symbol"
+                layout={{
+                  'text-field': ['get', 'urgency'],
+                  'text-size': 10,
+                  'text-offset': [0, -1],
+                  'text-anchor': 'bottom',
+                  'symbol-placement': 'line'
+                }}
+                paint={{ 'text-color': '#ffffff' }}
+              />
+              <Layer
+                id="routing-arrows"
+                type="symbol"
+                layout={{
+                  'symbol-placement': 'line',
+                  'symbol-spacing': 50,
+                  'text-field': '▶',
+                  'text-size': 12,
+                  'text-keep-upright': true
+                }}
+                paint={{ 'text-color': '#ffffff' }}
+              />
+            </Source>
+            
+          )}
 
           {/* 3. Oceanographic anomalies */}
           {showMarineLayer && activeMarineFeatures.length > 0 && (
