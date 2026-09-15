@@ -778,7 +778,7 @@ export default function App() {
                       <span className="text-slate-500 group-open:rotate-180 transition-transform text-[9px]">▼</span>
                     </summary>
                     <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-mono space-y-1">
-                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.rawStatus}</span></div>
+                      <div>Status: <span className={props.status?.toUpperCase().includes('CRITICAL') ? 'text-rose-400' : 'text-emerald-300'}>{props.status}</span></div>
                       <div className="text-slate-500 text-[9px]">Routing: {props.power_routing}</div>
                     </div>
                   </details>
