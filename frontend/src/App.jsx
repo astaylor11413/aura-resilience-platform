@@ -702,17 +702,16 @@ export default function App() {
             </button>
           </div>
           {/* Dynamic Switch Panel Layout */}
-          {<>
-          !showImpactAnalysis ? (
-            
+          {!showImpactAnalysis ? (
+            <>
               <HudPanel title="Storm Tracker">
                 <div className="text-[10px] text-slate-300 space-y-2">
                   <p>No storm activity at this time.</p>            
                 </div>
               </HudPanel>
-            
+            </>
           ) : (
-            
+            <>
             <ImpactAnalysisPanel
               currentTimeStep={currentTimeStep}
               onTimeStepChange={(newStep) => {
@@ -728,7 +727,8 @@ export default function App() {
                 setters.setIsSimulating(false);
               }}
             />
-          )
+            </>
+          )}
           <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
                 {(activeRoutingGeoJson.features || []).map((route, i) => {
@@ -752,8 +752,8 @@ export default function App() {
                 })}
               </div>
             </HudPanel>
-          </>}
         </div>
+        
 
         {/* CENTER VISUAL ACCOMMODATION COUPLER */}
         <div className="hidden md:block md:col-span-6" />
