@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import Map, { Source, Layer } from 'react-map-gl';
+import Map, { Source, Layer, Marker } from 'react-map-gl';
+import { Home } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuraData } from './hooks/useAuraData';
 import { HudPanel } from './components/HudPanel';
@@ -306,7 +307,7 @@ export default function App() {
 
         if (transcriberPanel) {
           transcriberPanel.open = true;
-          console.log("🎯 Aura Automation: Successfully forced Logistics Transcriber open attribute.");
+          console.log("Aura Automation: Successfully forced Logistics Transcriber open attribute.");
         }
 
        // Step 2: Open up a typewriter effect inside the 600ms UI layout transition buffer
@@ -601,27 +602,35 @@ export default function App() {
             </Source>            
           )}
           {/* DEMAND SHELTER DESTINATION PINS */}
-{showRoutingLayer && mock_demand_db.map((shelter) => {
-  const [lng, lat] = shelter.coordinates;
-  const isCritical = shelter.urgency_level === "CRITICAL";
+          {showRoutingLayer && activeRoutingGeoJson.features.map((feature, idx) => {
+  const coords = feature.geometry?.coordinates;
+  if (!coords || coords.length === 0) return null;
+
+  // Shelter coordinate is the destination (last point of the LineString path)
+  const destinationCoord = coords[coords.length - 1];
+  const [lng, lat] = destinationCoord;
+
+  const shelterName = feature.properties?.destination_shelter || feature.properties?.shelter_name || 'Shelter Destination';
+  const urgencyLevel = feature.properties?.urgency_level || 'HIGH';
+  const isCritical = urgencyLevel === 'CRITICAL';
 
   return (
     <Marker
-      key={shelter.shelter_id}
+      key={feature.properties?.id || `shelter-marker-${idx}`}
       longitude={lng}
       latitude={lat}
       anchor="bottom"
     >
       <div className="flex flex-col items-center group pointer-events-auto cursor-pointer">
-        {/* Hover Tooltip showing Shelter Name & Urgency */}
+        {/* Hover Tooltip */}
         <div className="hidden group-hover:flex flex-col bg-slate-950/95 border border-purple-500/40 text-slate-100 font-mono text-[10px] px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap mb-1">
-          <span className="font-bold text-purple-300">🏠 {shelter.shelter_name}</span>
+          <span className="font-bold text-purple-300">🏠 {shelterName}</span>
           <span className={`text-[8px] font-semibold ${isCritical ? 'text-rose-400' : 'text-amber-400'}`}>
-            URGENCY: {shelter.urgency_level}
+            URGENCY: {urgencyLevel}
           </span>
         </div>
 
-        {/* Pulse Beacon Icon */}
+        {/* Pulse Beacon Pin */}
         <div className="relative flex items-center justify-center">
           <span className={`absolute h-6 w-6 rounded-full animate-ping ${isCritical ? 'bg-rose-500/40' : 'bg-purple-500/40'}`} />
           <div className="h-7 w-7 rounded-full bg-slate-950 border-2 border-purple-400 flex items-center justify-center text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.6)]">
@@ -632,7 +641,6 @@ export default function App() {
     </Marker>
   );
 })}
-
           {/* 3. Oceanographic anomalies */}
           {showMarineLayer && activeMarineFeatures.length > 0 && (
             <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
