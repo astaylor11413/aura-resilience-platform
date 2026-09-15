@@ -598,9 +598,40 @@ export default function App() {
                 }}
                 paint={{ 'text-color': '#ffffff' }}
               />
-            </Source>
-            
+            </Source>            
           )}
+          {/* DEMAND SHELTER DESTINATION PINS */}
+{showRoutingLayer && mock_demand_db.map((shelter) => {
+  const [lng, lat] = shelter.coordinates;
+  const isCritical = shelter.urgency_level === "CRITICAL";
+
+  return (
+    <Marker
+      key={shelter.shelter_id}
+      longitude={lng}
+      latitude={lat}
+      anchor="bottom"
+    >
+      <div className="flex flex-col items-center group pointer-events-auto cursor-pointer">
+        {/* Hover Tooltip showing Shelter Name & Urgency */}
+        <div className="hidden group-hover:flex flex-col bg-slate-950/95 border border-purple-500/40 text-slate-100 font-mono text-[10px] px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap mb-1">
+          <span className="font-bold text-purple-300">🏠 {shelter.shelter_name}</span>
+          <span className={`text-[8px] font-semibold ${isCritical ? 'text-rose-400' : 'text-amber-400'}`}>
+            URGENCY: {shelter.urgency_level}
+          </span>
+        </div>
+
+        {/* Pulse Beacon Icon */}
+        <div className="relative flex items-center justify-center">
+          <span className={`absolute h-6 w-6 rounded-full animate-ping ${isCritical ? 'bg-rose-500/40' : 'bg-purple-500/40'}`} />
+          <div className="h-7 w-7 rounded-full bg-slate-950 border-2 border-purple-400 flex items-center justify-center text-purple-300 shadow-[0_0_12px_rgba(168,85,247,0.6)]">
+            <Home size={13} />
+          </div>
+        </div>
+      </div>
+    </Marker>
+  );
+})}
 
           {/* 3. Oceanographic anomalies */}
           {showMarineLayer && activeMarineFeatures.length > 0 && (
