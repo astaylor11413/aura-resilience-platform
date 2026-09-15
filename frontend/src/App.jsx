@@ -391,8 +391,7 @@ export default function App() {
     }, 2000);
   };
 
-  const handleProcessTransmission = async (e) => {
-    if (e && e.preventDefault) e.preventDefault(); // Prevents page reload
+  const handleProcessTransmission = async () => {
 
     if (!reportText.trim()) return;
     setIsProcessing(true);
@@ -867,6 +866,7 @@ export default function App() {
                 className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
               />
               <button
+                type="button"
                 onClick={handleProcessTransmission}
                 disabled={isProcessing || (!modelReady && globalState.airGapped)}
                 className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
