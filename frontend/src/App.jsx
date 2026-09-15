@@ -479,47 +479,58 @@ export default function App() {
   const activeRoutingGeoJson = data?.routingGeoJson || { type: 'FeatureCollection', features: [] };
 
   // --- DATA SANITIZATION FILTERS ---
- const sanitizedSubstations = useMemo(() => {
-  if (!geoJson?.substations) return { type: "FeatureCollection", features: [] };
+  const sanitizedSubstations = useMemo(() => {
+    // Use processedSubstationFeatures as the source of truth
+    const featuresToProcess = processedSubstationFeatures || [];
 
-  return {
-    type: "FeatureCollection",
-    features: geoJson.substations.features.map(node => {
-      let liveThreat = 0;
+    if (featuresToProcess.length === 0) {
+      return { type: "FeatureCollection", features: [] };
+    }
 
-      // 1. WIND SENSITIVITY (Your original logic)
-      if (globalState.windSpeed > 0) {
-        liveThreat += Math.floor(globalState.windSpeed / 15);
-      }
+    return {
+      type: "FeatureCollection",
+      features: featuresToProcess.map(node => {
+        let liveThreat = 0;
 
-      // 2. WATER/FLOOD SENSITIVITY (The Missing Link)
-      // If the simulation is running and water levels are rising, elevate node danger
-      if (globalState.isSimulating && globalState.slrMeters > 0) {
-        // High-risk low-lying substations get hit harder by the surge
-        const isLowLying = node.properties.elevation < 3 || node.properties.sector === 'Palisadoes';
+        // 1. WIND SENSITIVITY
+        if (globalState.windSpeed > 0) {
+          liveThreat += Math.floor(globalState.windSpeed / 15);
+        }
+
+        // 2. WATER/FLOOD SENSITIVITY
+        if (globalState.isSimulating && globalState.slrMeters > 0) {
+          const isLowLying = node.properties?.elevation < 3 || node.properties?.sector === 'Palisadoes';
         
-        if (isLowLying) {
-          // Accelerate threat rapidly based on current simulation water height
-          liveThreat += Math.floor(globalState.slrMeters * 2.5);
-        } else {
-          // Standard baseline inundation creeping up
-          liveThreat += Math.floor(globalState.slrMeters * 1.2);
+          if (isLowLying) {
+            liveThreat += Math.floor(globalState.slrMeters * 2.5);
+          } else {
+            liveThreat += Math.floor(globalState.slrMeters * 1.2);
+          }
         }
-      }
 
-      // Cap the final threat index at 11
-      const finalThreatIndex = Math.min(liveThreat, 11);
+        // Cap threat index at 11
+        const finalThreatIndex = Math.min(liveThreat, 11);
 
-      return {
-        ...node,
-        properties: {
-          ...node.properties,
-          threat_index: finalThreatIndex // This feeds directly to the map color expression
-        }
-      };
-    })
-  };
-}, [geoJson?.substations, globalState.windSpeed, globalState.slrMeters, globalState.isSimulating]);
+        // Verify coordinate order: Mapbox REQUIRES [longitude, latitude]
+        const rawCoords = node.geometry?.coordinates || [0, 0];
+        const validLngLat = rawCoords[0] > 0 && rawCoords[1] < 0 
+          ? [rawCoords[1], rawCoords[0]] // Swaps [lat, lng] to [lng, lat] if positive lat comes first
+          : rawCoords;
+
+        return {
+          ...node,
+          geometry: {
+            ...node.geometry,
+            coordinates: validLngLat
+          },
+          properties: {
+            ...node.properties,
+            threat_index: finalThreatIndex // Feeds directly to substationLayer color interpolation
+          }
+        };
+      })
+    };
+  }, [processedSubstationFeatures, globalState.windSpeed, globalState.slrMeters, globalState.isSimulating]);
 
   const sanitizedInundation = useMemo(() => {
     if (globalState.airGapped) return activeInundation;
