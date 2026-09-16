@@ -133,7 +133,7 @@ export const useAuraData = () => {
             }
         })).filter(f => f.geometry?.coordinates)
     };
-
+/*
     const compiledMarineGeoJson = {
         type: "FeatureCollection",
         features: (marineAnomalies || []).map(feature => {
@@ -148,7 +148,12 @@ export const useAuraData = () => {
             };
         })
     };
-
+*/
+    const compiledMarineGeoJson = {
+        type: "FeatureCollection",
+        features: marineAnomalies || []
+    };
+    
     // System Wiping Utility
     const resetAuraState = () => {
         Object.keys(localStorage).forEach(key => {
