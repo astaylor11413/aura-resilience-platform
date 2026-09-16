@@ -7,6 +7,7 @@ import { HudPanel } from './components/HudPanel';
 import { ImpactAnalysisPanel } from './components/ImpactAnalysisPanel';
 import { ShieldAlert } from 'lucide-react';
 import ThreeDSimulationPage from './ThreeDSimulationPage';
+import { triggerDataDownload } from './exportGeospatialData';
 import {
   runLocalTriage,
   runLocalGridSimulation,
@@ -167,6 +168,7 @@ export default function App() {
   const [showImpactAnalysis, setShowImpactAnalysis] = useState(false);
   const [currentTimeStep, setCurrentTimeStep] = useState(0);
   const [currentAlert, setCurrentAlert] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
   
 
   const mapRef = useRef(null);
@@ -689,6 +691,44 @@ export default function App() {
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
+            <div className="relative inline-block text-left">
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors flex items-center gap-1.5"
+              >
+                <span>EXPORT GIS DATA</span>
+                <span className="text-[8px] text-slate-400">▼</span>
+              </button>
+
+              {isOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded shadow-xl z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        triggerDataDownload(activeMarineFeatures, 'aura_marine_telemetry', 'geojson');
+                        setIsOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-emerald-400 font-mono transition-colors"
+                    >
+                      GeoJSON Feature Collection
+                      <span className="block text-[10px] text-slate-500 font-sans">For QGIS, ArcGIS, Mapbox</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        triggerDataDownload(activeMarineFeatures, 'aura_stac_catalog', 'stac');
+                        setIsOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-emerald-400 font-mono border-t border-slate-800 transition-colors"
+                    >
+                      STAC 1.0.0 Metadata Catalog
+                      <span className="block text-[10px] text-slate-500 font-sans">SpatioTemporal Asset Catalog</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
