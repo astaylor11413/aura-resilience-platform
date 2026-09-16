@@ -888,7 +888,6 @@ export default function App() {
                     <div className="text-[10px] text-slate-400 mt-2 border-t border-white/5 pt-2 font-sans leading-relaxed space-y-1.5">
                       <div className="text-[9px] font-mono uppercase tracking-wider text-teal-500 font-bold">Community & Ecosystem Impact:</div>
                       <p className="text-slate-300">{localImpactBlurb}</p>
-                      <div className="text-[9px] font-mono text-slate-500 pt-0.5">Microplastic Density: {m.properties?.microplastic_density_ppm || 0} ppm</div>
                     </div>
                     {/* FINANCIAL & BLUE CARBON VALUATION DISPLAY */}
                     <div className="bg-slate-950/60 p-2 rounded border border-teal-500/20 font-mono space-y-1">
