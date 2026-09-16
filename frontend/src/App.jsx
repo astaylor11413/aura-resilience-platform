@@ -689,24 +689,6 @@ export default function App() {
             <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
-            <button
-              onClick={() => {
-                if (tickerRef.current) clearInterval(tickerRef.current);
-                setCurrentAlert(null);
-                if (globalState.isSimulating) {
-                  setters.setIsSimulating(false);
-                }
-                mapRef.current?.flyTo({
-                  center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude],
-                  zoom: HOME_COORDINATES.zoom,
-                  essential: true,
-                  duration: 1500
-                });
-              }}
-              className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors"
-            >
-              RESET_VIEW
-            </button>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -739,6 +721,24 @@ export default function App() {
               className="w-full bg-rose-900/30 hover:bg-rose-900/60 text-rose-500 text-[10px] px-3 py-1.5 rounded border border-rose-900/50 transition-colors text-center"
             >
               System Reset
+            </button>
+            <button
+              onClick={() => {
+                if (tickerRef.current) clearInterval(tickerRef.current);
+                setCurrentAlert(null);
+                if (globalState.isSimulating) {
+                  setters.setIsSimulating(false);
+                }
+                mapRef.current?.flyTo({
+                  center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude],
+                  zoom: HOME_COORDINATES.zoom,
+                  essential: true,
+                  duration: 1500
+                });
+              }}
+              className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors"
+            >
+              Reset Map View
             </button>
           </div>
           {/* Dynamic Switch Panel Layout */}
