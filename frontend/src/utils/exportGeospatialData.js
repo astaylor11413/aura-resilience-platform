@@ -1,3 +1,4 @@
+
 export const triggerDataDownload = (data, filename, format = 'geojson') => {
   let content = '';
   let mimeType = 'application/geo+json';
