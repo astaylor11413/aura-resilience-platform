@@ -852,6 +852,8 @@ export default function App() {
               {activeMarineFeatures.map((m, i) => {
                 const locName = m.properties?.location_name || 'Anomalous Region';
                 const tempAnomaly = m.properties?.surface_temp_anomaly_celsius || 0;
+                const microplasticPpm = m.properties?.microplastic_density_ppm || 0;
+                const impact = m.properties?.economic_impact || {};
                 const geomCoords = m.geometry?.coordinates;
                 let localImpactBlurb = "Monitoring regional baseline indices. Elevated surface metrics signal early risks.";
 
@@ -887,6 +889,27 @@ export default function App() {
                       <div className="text-[9px] font-mono uppercase tracking-wider text-teal-500 font-bold">Community & Ecosystem Impact:</div>
                       <p className="text-slate-300">{localImpactBlurb}</p>
                       <div className="text-[9px] font-mono text-slate-500 pt-0.5">Microplastic Density: {m.properties?.microplastic_density_ppm || 0} ppm</div>
+                    </div>
+                    {/* FINANCIAL & BLUE CARBON VALUATION DISPLAY */}
+                    <div className="bg-slate-950/60 p-2 rounded border border-teal-500/20 font-mono space-y-1">
+                      <div className="text-[9px] uppercase text-teal-400 font-bold tracking-wider flex justify-between">
+                        <span>Est. Risk Exposure:</span>
+                        <span className="text-emerald-400">${(impact.total_risk_exposure_usd || 0).toLocaleString()} USD</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[8px] text-slate-400 pt-1 border-t border-white/5">
+                        <div>Direct Econ Loss: 
+                          <span className="text-slate-200">${(impact.direct_economic_loss_usd || 0).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          Blue Carbon Loss: <span className="text-slate-200">{impact.blue_carbon_tons_lost || 0} tCO₂e</span>
+                        </div>
+                        <div>
+                          Carbon Liability: <span className="text-slate-200">${(impact.carbon_liability_usd || 0).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          Microplastics: <span className="text-slate-200">{microplasticPpm} ppm</span>
+                        </div>
+                      </div>
                     </div>
                   </details>
                 );

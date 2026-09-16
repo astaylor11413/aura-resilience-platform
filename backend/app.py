@@ -12,6 +12,7 @@ from scipy.spatial import distance
 from openai import OpenAI
 from PIL import Image
 from transformers import pipeline
+from valuation_engine import calculate_marine_economic_impact
 
 # Multi-layered spatial state matrices
 from database import mock_supply_db, mock_demand_db, mock_ocean_anomalies, mock_coastal_dem, mock_grid_substations
@@ -185,13 +186,20 @@ def get_ocean_telemetry():
     features = []
     for anomaly in mock_ocean_anomalies:
         ai_threat_flag = "CRITICAL_STORM_INCUBATION" if anomaly["temp_anomaly"] >= 2.5 and anomaly["plastic_density"] > 400 else "MONITOR"
+        # Calculate economic & blue carbon impact dynamically
+        impact_metrics = calculate_marine_economic_impact(
+            anomaly_name=anomaly["name"],
+            temp_anomaly=anomaly["temp_anomaly"],
+            plastic_density=anomaly["plastic_density"]
+        )
         features.append({
             "type": "Feature",
             "properties": {
                 "location_name": anomaly["name"],
                 "surface_temp_anomaly_celsius": anomaly["temp_anomaly"],
                 "microplastic_density_ppm": anomaly["plastic_density"],
-                "ai_watchdog_status": ai_threat_flag
+                "ai_watchdog_status": ai_threat_flag,
+                "economic_impact": impact_metrics
             },
             "geometry": {"type": "Point", "coordinates": anomaly["coordinates"]}
         })
