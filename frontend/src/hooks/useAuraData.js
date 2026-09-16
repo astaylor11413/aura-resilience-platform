@@ -136,11 +136,17 @@ export const useAuraData = () => {
 
     const compiledMarineGeoJson = {
         type: "FeatureCollection",
-        features: (marineAnomalies || []).map(anomaly => ({
-            type: "Feature",
-            geometry: anomaly.geometry,
-            properties: { ...(anomaly.properties || {}), status: anomaly.properties?.ai_watchdog_status || 'NOMINAL' }
-        }))
+        features: (marineAnomalies || []).map(feature => {
+            const props = feature.properties || {};
+            return {
+                type: "Feature",
+                geometry: feature.geometry,
+                properties: {
+                    ...props,
+                    status: props.ai_watchdog_status || 'NOMINAL'
+                }
+            };
+        })
     };
 
     // System Wiping Utility
