@@ -867,7 +867,7 @@ export default function App() {
                 onChange={(e) => setters.setAirGapped(e.target.checked)}
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
-              <span>AIR_GAPPED_MODE</span>
+              <span>Air Gapped Mode</span>
             </label>
           </div>
         </header>
