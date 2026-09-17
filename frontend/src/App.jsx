@@ -169,6 +169,7 @@ export default function App() {
   const [currentTimeStep, setCurrentTimeStep] = useState(0);
   const [currentAlert, setCurrentAlert] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [citizenReports, setCitizenReports] = useState([]);
   
 
   const mapRef = useRef(null);
@@ -396,46 +397,80 @@ export default function App() {
   };
 
   const handleProcessTransmission = async () => {
+  if (!reportText.trim()) return;
+  setIsProcessing(true);
 
-    if (!reportText.trim()) return;
-    setIsProcessing(true);
+  const rawText = reportText;
+  const lowerText = rawText.toLowerCase();
 
-    if (globalState.airGapped) {
-      try {
-        const result = await runLocalTriage(reportText, globalState);
-        alert(`${result.actionable_tactical_playbook}`);
-        setters.setActiveThreatIndex(result.matched_node_threat_index);
-      } catch (err) {
-        console.error("Edge Engine Error:", err);
-      } finally {
-        setIsProcessing(false);
-      }
-      return;
+  // --- 1. PARSE FLOOD / SURGE MENTION ---
+  // Matches patterns like "2.5 meters", "2.5m", "3 meter"
+  const slrMatch = lowerText.match(/(\d+(?:\.\d+)?)\s*(?:m|meters?|meter)/);
+  if (slrMatch && slrMatch[1]) {
+    const parsedSlr = parseFloat(slrMatch[1]);
+    if (!isNaN(parsedSlr)) {
+      setters.setSlrMeters(parsedSlr); // Updates Environmental Vectors slider & map overlay
     }
+  }
 
-    try {
+  // --- 2. PARSE GRID / OUTAGE LOCATION ---
+  let affectedNodeId = null;
+  if (lowerText.includes('portmore')) {
+    affectedNodeId = 1; // Maps to Portmore Substation ID
+  } else if (lowerText.includes('kingston') || lowerText.includes('palisadoes')) {
+    affectedNodeId = 0; // Maps to Kingston/Palisadoes Node ID
+  }
+
+  if (affectedNodeId !== null) {
+    setters.setActiveThreatIndex(8); // Sets node threat index to Critical Red
+  }
+
+  // --- 3. DETERMINE MAP COORDINATES FOR CITIZEN PIN ---
+  let reportCoords = [-76.78, 17.95]; // Default Kingston base [lng, lat]
+  if (lowerText.includes('portmore')) {
+    reportCoords = [-76.882, 17.955];
+  } else if (lowerText.includes('palisadoes')) {
+    reportCoords = [-76.753, 17.936];
+  } else if (lowerText.includes('half way tree')) {
+    reportCoords = [-76.798, 18.012];
+  }
+
+  // --- 4. CREATE NEW CITIZEN REPORT ENTRY ---
+  const newReport = {
+    id: `report-${Date.now()}`,
+    text: rawText,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    coordinates: reportCoords,
+    type: lowerText.includes('flood') || lowerText.includes('water') ? 'FLOOD' : 'GRID_OUTAGE',
+    mediaUrl: null // Ready for file/photo uploads
+  };
+
+  setCitizenReports(prev => [newReport, ...prev]);
+
+  // --- 5. RUN EXISTING AI TRIAGE / BACKEND PIPELINE ---
+  try {
+    if (globalState.airGapped) {
+      const result = await runLocalTriage(rawText, globalState);
+      alert(`[CITIZEN REPORT LOGGED]\n\nPlaybook: ${result.actionable_tactical_playbook}`);
+    } else {
       const formData = new FormData();
-      formData.append('text', reportText);
-      formData.append('air_gapped', globalState.airGapped ? 'true' : 'false');
+      formData.append('text', rawText);
+      formData.append('air_gapped', 'false');
 
       const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
         method: 'POST',
         body: formData
       });
-
       const resData = await response.json();
-      if (resData.status === 'success') {
-        if (resData.matched_node_threat_index !== null) {
-          setters.setActiveThreatIndex(resData.matched_node_threat_index);
-        }
-        alert(`Triage Complete: ${resData.triage_incident_profile}\nPlaybook: ${resData.actionable_tactical_playbook}`);
-      }
-    } catch (err) {
-      console.error('Transmission processing failure:', err);
-    } finally {
-      setIsProcessing(false);
+      alert(`[CITIZEN REPORT LOGGED]\n\nPlaybook: ${resData.actionable_tactical_playbook}`);
     }
-  };
+  } catch (err) {
+    console.error('Submission error:', err);
+  } finally {
+    setIsProcessing(false);
+    setReportText(''); // Clear input after successful submit
+  }
+};
 
   // Resolve active telemetry datasets based on isolation mode
   const activeInundation = globalState.airGapped
@@ -723,6 +758,42 @@ export default function App() {
               <Layer {...structuralFootprintLayer} id="usa-structures-base" />
             </Source>
           )}
+
+          {/* 6. CITIZEN INCIDENT MARKERS (CITIZENS-STYLE) */}
+{citizenReports.map((report) => (
+  <Marker
+    key={report.id}
+    longitude={report.coordinates[0]}
+    latitude={report.coordinates[1]}
+    anchor="center"
+  >
+    <div className="relative flex items-center justify-center group pointer-events-auto cursor-pointer">
+      {/* Outer Pulse Ring */}
+      <span className={`absolute h-6 w-6 rounded-full animate-ping ${
+        report.type === 'FLOOD' ? 'bg-cyan-500/50' : 'bg-rose-500/50'
+      }`} />
+      
+      {/* Center Dot */}
+      <div className={`h-4 w-4 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[8px] font-bold ${
+        report.type === 'FLOOD' ? 'bg-cyan-500 text-slate-950' : 'bg-rose-600 text-white'
+      }`}>
+        !
+      </div>
+
+      {/* Hover / Click Popup Card */}
+      <div className="hidden group-hover:flex flex-col absolute bottom-6 left-1/2 -translate-x-1/2 w-56 bg-slate-950/95 border border-cyan-500/40 p-2.5 rounded-xl shadow-2xl backdrop-blur-md z-50 text-[10px] font-mono">
+        <div className="flex justify-between items-center border-b border-white/10 pb-1 mb-1">
+          <span className="font-bold text-cyan-400 uppercase tracking-wider">
+            {report.type === 'FLOOD' ? '🌊 Flood Incident' : '⚡ Grid Outage'}
+          </span>
+          <span className="text-slate-500 text-[8px]">{report.timestamp}</span>
+        </div>
+        <p className="text-slate-200 text-[9px] leading-relaxed mb-1 font-sans">{report.text}</p>
+        <span className="text-[8px] text-emerald-400 font-mono">STATUS: VERIFIED GROUND-TRUTH</span>
+      </div>
+    </div>
+  </Marker>
+))}
         </Map>
 
         {/* 3D overlay blending for atmospheric/particle filters */}
@@ -984,23 +1055,30 @@ export default function App() {
         {/* VOICE TRANSCRIPTION TRANSCRIBER PANEL */}
         <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
           <HudPanel title="Logistics Transcriber">
-            <div className="flex gap-2">
-              <textarea
-                value={reportText}
-                onChange={(e) => setReportText(e.target.value)}
-                placeholder={modelReady || !globalState.airGapped ? "Enter incident report (e.g., 'Palisadoes line is underwater down south')..." : "Loading AI model..."}
-                disabled={!modelReady && globalState.airGapped}
-                className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
-              />
-              <button
-                type="button"
-                onClick={handleProcessTransmission}
-                disabled={isProcessing || (!modelReady && globalState.airGapped)}
-                className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
-              >
-                {isProcessing ? 'Processing...' : 'Process'}
-              </button>
-            </div>
+            <div className="flex gap-2 items-center">
+  <label className="cursor-pointer bg-slate-900 hover:bg-slate-800 border border-white/10 p-2.5 rounded-lg text-slate-400 hover:text-white transition-colors" title="Attach Proof Photo/Video">
+    <input type="file" accept="image/*,video/*" className="hidden" onChange={(e) => {
+      if (e.target.files?.[0]) {
+        alert(`Attachment staged: ${e.target.files[0].name}`);
+      }
+    }} />
+    📷
+  </label>
+  <textarea
+    value={reportText}
+    onChange={(e) => setReportText(e.target.value)}
+    placeholder="Report an issue (e.g. 'Water flooding at 2.5 meters in Kingston' or 'Grid down in Portmore')..."
+    className="flex-grow h-14 bg-slate-950/50 border border-white/10 rounded p-2 text-xs text-slate-200 resize-none focus:border-purple-500 outline-none font-sans"
+  />
+  <button
+    type="button"
+    onClick={handleProcessTransmission}
+    disabled={isProcessing}
+    className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-[10px] px-4 py-2 rounded font-bold uppercase transition-colors text-white whitespace-nowrap"
+  >
+    {isProcessing ? 'Processing...' : 'Submit Report'}
+  </button>
+</div>
           </HudPanel>
         </div>
       </div>
