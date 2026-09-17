@@ -1,75 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 // Rigid fallback structure to prevent Mapbox layout compilation errors
 const INITIAL_GEOJSON = {
     type: 'FeatureCollection',
     features: []
-};
-
-/**
- * Pure Cascade Utility Function
- * Computes dependent system failures across Grid Assets and Logistics Routes
- */
-const computeCascadeState = ({ windSpeed, slrMeters, rawGridAssets, rawRoutingGeoJson, airGapped }) => {
-    // 1. Calculate Cascading Grid Failure States
-    const cascadedAssets = (rawGridAssets || []).map(asset => {
-        const windThreshold = asset.wind_threshold_mph || 65;
-        const elevation = asset.elevation_meters || 1.5;
-
-        const isWindFailure = windSpeed >= windThreshold;
-        const isInundated = slrMeters >= elevation;
-
-        let calculatedStatus = asset.status || 'NOMINAL';
-
-        if (isWindFailure && isInundated) {
-            calculatedStatus = 'CRITICAL_COMPOUND';
-        } else if (isInundated) {
-            calculatedStatus = 'CRITICAL_FLOOD';
-        } else if (isWindFailure) {
-            calculatedStatus = 'WARNING_WIND';
-        }
-
-        return {
-            ...asset,
-            calculatedStatus,
-            isOperational: !calculatedStatus.startsWith('CRITICAL')
-        };
-    });
-
-    // 2. Determine Overall Grid State
-    const totalAssets = cascadedAssets.length;
-    const criticalCount = cascadedAssets.filter(a => a.calculatedStatus.startsWith('CRITICAL')).length;
-    
-    let calculatedGridState = 'NOMINAL';
-    if (totalAssets > 0) {
-        const criticalRatio = criticalCount / totalAssets;
-        if (criticalRatio > 0.4) calculatedGridState = 'CRITICAL';
-        else if (criticalRatio > 0.1 || windSpeed > 50 || slrMeters > 1.0) calculatedGridState = 'DEGRADED';
-    }
-
-    // 3. Dynamically Cascade Flood Impact onto Logistics Mutual Aid Routes
-    const cascadedRoutingGeoJson = {
-        type: 'FeatureCollection',
-        features: (rawRoutingGeoJson?.features || []).map(feature => {
-            const minRouteElevation = feature.properties?.min_elevation_m || 1.2;
-            const isBlocked = slrMeters >= minRouteElevation;
-
-            return {
-                ...feature,
-                properties: {
-                    ...feature.properties,
-                    status: isBlocked ? 'IMPASSABLE' : 'OPEN',
-                    risk_level: isBlocked ? 'HIGH' : slrMeters > 0.5 ? 'MODERATE' : 'LOW'
-                }
-            };
-        })
-    };
-
-    return {
-        cascadedAssets,
-        calculatedGridState,
-        cascadedRoutingGeoJson
-    };
 };
 
 export const useAuraData = () => {
@@ -186,39 +120,39 @@ export const useAuraData = () => {
             });
     }, [airGapped, API_BASE]);
 
-    // Multi-Hazard Cascade Calculation Layer
-    const cascadeState = useMemo(() => {
-        return computeCascadeState({
-            windSpeed,
-            slrMeters,
-            rawGridAssets: gridAssets,
-            rawRoutingGeoJson: routingGeoJson,
-            airGapped
-        });
-    }, [windSpeed, slrMeters, gridAssets, routingGeoJson, airGapped]);
-
     // Derived GeoJSON Compilations
-    const compiledSubstationGeoJson = useMemo(() => ({
+    const compiledSubstationGeoJson = {
         type: "FeatureCollection",
-        features: (cascadeState.cascadedAssets || []).map(asset => {
-            const statusStr = (asset.calculatedStatus || asset.status || '').toLowerCase();
+        features: (gridAssets || []).map(asset => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: asset.coordinates },
+            properties: {
+                id: asset.id,
+                name: asset.name,
+                status: asset.status?.toLowerCase().includes('critical') ? 'critical' : 'nominal'
+            }
+        })).filter(f => f.geometry?.coordinates)
+    };
+/*
+    const compiledMarineGeoJson = {
+        type: "FeatureCollection",
+        features: (marineAnomalies || []).map(feature => {
+            const props = feature.properties || {};
             return {
                 type: "Feature",
-                geometry: { type: "Point", coordinates: asset.coordinates },
+                geometry: feature.geometry,
                 properties: {
-                    id: asset.id,
-                    name: asset.name,
-                    status: statusStr.includes('critical') ? 'critical' : statusStr.includes('warning') ? 'warning' : 'nominal',
-                    detailedStatus: asset.calculatedStatus
+                    ...props,
+                    status: props.ai_watchdog_status || 'NOMINAL'
                 }
             };
-        }).filter(f => f.geometry?.coordinates)
-    }), [cascadeState.cascadedAssets]);
-
-    const compiledMarineGeoJson = useMemo(() => ({
+        })
+    };
+*/
+    const compiledMarineGeoJson = {
         type: "FeatureCollection",
         features: marineAnomalies || []
-    }), [marineAnomalies]);
+    };
     
     // System Wiping Utility
     const resetAuraState = () => {
@@ -234,7 +168,7 @@ export const useAuraData = () => {
             slrMeters,
             activeThreatIndex,
             airGapped,
-            gridState: airGapped ? cascadeState.calculatedGridState : gridState,
+            gridState,
             derOutput,
             isSimulating,
             hurricaneIntensity
@@ -249,10 +183,10 @@ export const useAuraData = () => {
             resetAuraState
         },
         data: {
-            gridAssets: cascadeState.cascadedAssets,
+            gridAssets,
             marineAnomalies,
             triageReport,
-            routingGeoJson: cascadeState.cascadedRoutingGeoJson
+            routingGeoJson
         },
         geoJson: {
             compiledSubstationGeoJson,
