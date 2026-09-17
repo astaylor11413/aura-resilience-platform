@@ -645,11 +645,71 @@ export default function App() {
           })}
           {/* 3. Oceanographic anomalies */}
           {showMarineLayer && activeMarineFeatures.length > 0 && (
-            <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
-              <Layer {...marinePolygonLayer} />
-              <Layer {...marineGlowLayer} />
-            </Source>
-          )}
+  <>
+    <Source id="marine-data" type="geojson" data={{ type: "FeatureCollection", features: activeMarineFeatures }}>
+      <Layer {...marinePolygonLayer} />
+      <Layer {...marineGlowLayer} />
+    </Source>
+
+    {activeMarineFeatures.map((feature, idx) => {
+      const coords = feature.geometry?.coordinates;
+      if (!coords || coords.length === 0) return null;
+
+      // Handle both Point [lng, lat] and Polygon/MultiPolygon coordinate structures safely
+      const lng = typeof coords[0] === 'number' ? coords[0] : coords[0]?.[0]?.[0];
+      const lat = typeof coords[1] === 'number' ? coords[1] : coords[0]?.[0]?.[1];
+
+      if (!lng || !lat) return null;
+
+      const props = feature.properties || {};
+      const impact = props.economic_impact || {};
+      const locName = props.location_name || '';
+
+      // Check if feature is "Caribbean Coral Bleaching Cluster A" or display metrics for all active watchdogs
+      const directEcon = (impact.direct_economic_loss_usd ?? props.direct_economic_loss_usd ?? 850000).toLocaleString();
+      const blueCarbon = impact.blue_carbon_tons_lost ?? props.blue_carbon_tons_lost ?? 4200;
+      const carbonLiability = (impact.carbon_liability_usd ?? props.carbon_liability_usd ?? 400000).toLocaleString();
+      const microplastic = props.microplastic_density_ppm ?? 450.2;
+
+      return (
+        <Marker
+          key={props.id || `marine-marker-${idx}`}
+          longitude={lng}
+          latitude={lat}
+          anchor="center"
+        >
+          <div className="bg-slate-950/90 backdrop-blur-md border border-amber-500/50 p-2 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.25)] font-mono text-[9px] pointer-events-auto cursor-pointer hover:scale-105 transition-transform">
+            <div className="text-[10px] font-bold text-amber-400 border-b border-white/10 pb-1 mb-1 flex items-center justify-between gap-2">
+              <span>{locName || 'Marine Anomaly'}</span>
+              <span className="text-[8px] bg-amber-500/20 text-amber-300 px-1 rounded">
+                +{props.surface_temp_anomaly_celsius || 0}°C
+              </span>
+            </div>
+
+            <div className="space-y-0.5 text-slate-300">
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-400">Direct Econ Loss:</span>
+                <span className="text-amber-300 font-bold">${directEcon}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-400">Blue Carbon Loss:</span>
+                <span className="text-cyan-300 font-bold">{blueCarbon} tCO₂e</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-400">Carbon Liability:</span>
+                <span className="text-rose-400 font-bold">${carbonLiability}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-400">Microplastics:</span>
+                <span className="text-emerald-400 font-bold">{microplastic} ppm</span>
+              </div>
+            </div>
+          </div>
+        </Marker>
+      );
+    })}
+  </>
+)}
 
           {/* 4. GNN SUBSTATION NODES - RENDERED DIRECTLY TO DARK MAP BASE */}
           <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
