@@ -972,21 +972,7 @@ export default function App() {
                       <div className="text-[9px] uppercase text-teal-400 font-bold tracking-wider flex justify-between">
                         <span>Est. Risk Exposure:</span>
                         <span className="text-emerald-400">${(impact.total_risk_exposure_usd || 0).toLocaleString()} USD</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1 text-[8px] text-slate-400 pt-1 border-t border-white/5">
-                        <div>Direct Econ Loss: 
-                          <span className="text-slate-200">${(impact.direct_economic_loss_usd || 0).toLocaleString()}</span>
-                        </div>
-                        <div>
-                          Blue Carbon Loss: <span className="text-slate-200">{impact.blue_carbon_tons_lost || 0} tCO₂e</span>
-                        </div>
-                        <div>
-                          Carbon Liability: <span className="text-slate-200">${(impact.carbon_liability_usd || 0).toLocaleString()}</span>
-                        </div>
-                        <div>
-                          Microplastics: <span className="text-slate-200">{microplasticPpm} ppm</span>
-                        </div>
-                      </div>
+                      </div>                      
                     </div>
                   </details>
                 );
