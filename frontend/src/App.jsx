@@ -750,36 +750,14 @@ export default function App() {
             >
               <ShieldAlert size={18} /> {globalState.isSimulating ? "Simulation Active..." : "Simulate Hurricane Impact"}
             </button>
-            <button
-              onClick={() => {
-                if (tickerRef.current) clearInterval(tickerRef.current);
-                setCurrentAlert(null);
-                if (window.confirm("CRITICAL: This will purge all local session data and reset AURA to factory settings. Continue?")) {
-                  setters.resetAuraState();
-                }
-              }}
-              className="w-full bg-rose-900/30 hover:bg-rose-900/60 text-rose-500 text-[10px] px-3 py-1.5 rounded border border-rose-900/50 transition-colors text-center"
-            >
-              System Reset
-            </button>
-            <button
-              onClick={() => {
-                if (tickerRef.current) clearInterval(tickerRef.current);
-                setCurrentAlert(null);
-                if (globalState.isSimulating) {
-                  setters.setIsSimulating(false);
-                }
-                mapRef.current?.flyTo({
-                  center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude],
-                  zoom: HOME_COORDINATES.zoom,
-                  essential: true,
-                  duration: 1500
-                });
-              }}
-              className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors"
-            >
-              Reset Map View
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { if (tickerRef.current) clearInterval(tickerRef.current); setCurrentAlert(null); if (window.confirm("Purge local session data?")) setters.resetAuraState(); }} className="bg-rose-900/30 hover:bg-rose-900/60 text-rose-500 text-[10px] px-3 py-1.5 rounded border border-rose-900/50">
+                System Reset
+              </button>
+              <button onClick={() => { if (tickerRef.current) clearInterval(tickerRef.current); setCurrentAlert(null); if (globalState.isSimulating) setters.setIsSimulating(false); mapRef.current?.flyTo({ center: [HOME_COORDINATES.longitude, HOME_COORDINATES.latitude], zoom: HOME_COORDINATES.zoom, essential: true, duration: 1500 }); }} className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10">
+                Reset Map View
+              </button>
+            </div>
           </div>
           {/* Dynamic Switch Panel Layout */}
           {!showImpactAnalysis ? (
