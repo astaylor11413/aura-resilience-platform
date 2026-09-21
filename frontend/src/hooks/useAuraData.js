@@ -20,6 +20,7 @@ export const useAuraData = () => {
     const [hurricaneIntensity, setHurricaneIntensity] = useState(() => getStored('hurricaneIntensity', 1));
     const [windSpeed, setWindSpeed] = useState(() => getStored('windSpeed', 25));
     const [slrMeters, setSlrMeters] = useState(() => getStored('slrMeters', 0.0));
+    const [greenVectorSlider, setGreenVectorSlider] = useState(() => getStored('greenVectorSlider', 1.0));
     const [activeThreatIndex, setActiveThreatIndex] = useState(() => getStored('activeThreatIndex', null));
     const [airGapped, setAirGapped] = useState(() => getStored('airGapped', false));
 
@@ -31,6 +32,7 @@ export const useAuraData = () => {
     const [triageReport, setTriageReport] = useState(null);
     const [routingGeoJson, setRoutingGeoJson] = useState(INITIAL_GEOJSON);
     const [inundationGeoJson, setInundationGeoJson] = useState(INITIAL_GEOJSON);
+    const [greenInfrastructureGeoJson, setGreenInfrastructureGeoJson] = useState(INITIAL_GEOJSON);
 
     // Environment Base URL
     const API_BASE = import.meta.env.VITE_AURA_API_BASE_URL || 'https://aura-resilience-platform-prod.onrender.com/api/v1';
@@ -40,9 +42,10 @@ export const useAuraData = () => {
         localStorage.setItem('aura_hurricaneIntensity', JSON.stringify(hurricaneIntensity));
         localStorage.setItem('aura_windSpeed', JSON.stringify(windSpeed));
         localStorage.setItem('aura_slrMeters', JSON.stringify(slrMeters));
+        localStorage.setItem('aura_greenVectorSlider', JSON.stringify(greenVectorSlider));
         localStorage.setItem('aura_activeThreatIndex', JSON.stringify(activeThreatIndex));
         localStorage.setItem('aura_airGapped', JSON.stringify(airGapped));
-    }, [hurricaneIntensity, windSpeed, slrMeters, activeThreatIndex, airGapped]);
+    }, [hurricaneIntensity, windSpeed, slrMeters, greenVectorSlider, activeThreatIndex, airGapped]);
 
     // 1. Grid Simulation Sync
     useEffect(() => {
@@ -91,6 +94,30 @@ export const useAuraData = () => {
 
         return () => controller.abort();
     }, [slrMeters, airGapped, API_BASE]);
+
+    //Dynamic Green Infrastructure Vector Sync
+    useEffect(() => {
+        if (airGapped) return;
+
+        const controller = new AbortController();
+        fetch(`${API_BASE}/preventative/green-infrastructure?slider_vector=${greenVectorSlider}`, { signal: controller.signal })
+            .then(res => res.json())
+            .then(geoJson => {
+                if (geoJson?.type === 'FeatureCollection') {
+                    setGreenInfrastructureGeoJson(geoJson);
+                } else {
+                    setGreenInfrastructureGeoJson(INITIAL_GEOJSON);
+                }
+            })
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    console.error("Green infrastructure fetch error:", err);
+                    setGreenInfrastructureGeoJson(INITIAL_GEOJSON);
+                }
+            });
+
+        return () => controller.abort();
+    }, [greenVectorSlider, airGapped, API_BASE]);
 
     // 3. Static Oceanographic & Logistics Sync
     useEffect(() => {
@@ -169,6 +196,7 @@ export const useAuraData = () => {
         state: {
             windSpeed,
             slrMeters,
+            greenVectorSlider,
             activeThreatIndex,
             airGapped,
             gridState,
@@ -179,6 +207,7 @@ export const useAuraData = () => {
         setters: {
             setWindSpeed,
             setSlrMeters,
+            setGreenVectorSlider,
             setActiveThreatIndex,
             setAirGapped,
             setIsSimulating,
@@ -194,7 +223,8 @@ export const useAuraData = () => {
         geoJson: {
             compiledSubstationGeoJson,
             compiledMarineGeoJson,
-            inundationGeoJson
+            inundationGeoJson,
+            greenInfrastructureGeoJson
         }
     };
 };
