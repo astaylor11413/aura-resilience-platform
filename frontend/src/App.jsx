@@ -85,6 +85,26 @@ const inundationLayer = {
   }
 };
 
+// Green Infrastructure Preventative Vector Map Layers
+const greenInfrastructureFillLayer = {
+  id: 'green-infrastructure-fill-layer',
+  type: 'fill',
+  paint: {
+    'fill-color': '#10b981',
+    'fill-opacity': 0.35
+  }
+};
+
+const greenInfrastructureLineLayer = {
+  id: 'green-infrastructure-line-layer',
+  type: 'line',
+  paint: {
+    'line-color': '#34d399',
+    'line-width': 2,
+    'line-dasharray': [2, 2]
+  }
+};
+
 const routingLayer = {
   id: 'routing-layer',
   type: 'line',
@@ -746,6 +766,13 @@ export default function App() {
   </>
 )}
 
+          {/* Dynamic Preventative Green Infrastructure Layer */}
+          {geoJson?.greenInfrastructureGeoJson && (
+            <Source id="green-infrastructure-data" type="geojson" data={geoJson.greenInfrastructureGeoJson}>
+              <Layer {...greenInfrastructureFillLayer} />
+              <Layer {...greenInfrastructureLineLayer} />
+            </Source>
+        )}
           {/* 4. GNN SUBSTATION NODES - RENDERED DIRECTLY TO DARK MAP BASE */}
           <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
             <Layer {...substationLayer} />
@@ -985,6 +1012,22 @@ export default function App() {
             <div className="space-y-1 pt-2">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{globalState.slrMeters}m</span></div>
               <input type="range" min="0" max="3" step="0.5" value={globalState.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
+            </div>
+            {/* Preventative Green Vector Slider Controller */}
+            <div className="flex flex-col gap-1 border-t border-white/10 pt-2 mt-1">
+              <div className="flex justify-between text-emerald-400">
+                <span>Green Infrastructure Vector:</span>
+                <span>{state.greenVectorSlider.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="3.0"
+                step="0.1"
+                value={state.greenVectorSlider}
+                onChange={e => setters.setGreenVectorSlider(parseFloat(e.target.value))}
+                className="w-full accent-emerald-500 cursor-pointer pointer-events-auto"
+              />
             </div>
             {globalState.activeThreatIndex !== null && (
               <button
