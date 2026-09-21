@@ -101,9 +101,9 @@ const parishRiskFillLayer = {
       'coalesce',
       ['get', 'fill_color'],
       ['match', ['get', 'risk_level'],
-        'High', '#ef4444',
-        'Medium', '#f59e0b',
-        'Low', '#10b981',
+        'CRITICAL', '#ef4444',
+        'ELEVATED', '#f97316',
+        'MODERATE', '#10b981',
         '#38bdf8' // Default fallback color if no property is matched
       ]
     ],
@@ -679,6 +679,7 @@ export default function App() {
           onMove={evt => setViewState(evt.viewState)}
           mapboxAccessToken={MAPBOX_TOKEN}
           mapStyle="mapbox://styles/mapbox/dark-v11"
+          interactiveLayerIds={globalState.isPredictiveMode ? ['parish-risk-fill'] : []}
           style={{ width: '100%', height: '100%' }}
         >
           {/* 1. Storm Surge Inundation Polygons */}
