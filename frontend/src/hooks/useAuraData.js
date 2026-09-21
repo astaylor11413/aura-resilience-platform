@@ -24,7 +24,7 @@ export const useAuraData = () => {
     const [airGapped, setAirGapped] = useState(() => getStored('airGapped', false));
     const [greenVectorSlider, setGreenVectorSlider] = useState(() => getStored('greenVectorSlider', 1.0));
     const [is3DViewActive, setIs3DViewActive] = useState(() => getStored('is3DViewActive', false));
-
+    const [isPredictiveMode, setIsPredictiveMode] = useState(() => getStored('isPredictiveMode', false));
 
     // Data Repositories
     const [gridAssets, setGridAssets] = useState([]);
@@ -129,6 +129,11 @@ export const useAuraData = () => {
 
         return () => controller.abort();
     }, [greenVectorSlider, airGapped, API_BASE]);*/
+
+    // Fetch Predictive Mode control data for HUD Panel switch
+    useEffect(() => {
+        localStorage.setItem('aura_isPredictiveMode', JSON.stringify(isPredictiveMode));
+    }, [isPredictiveMode]);
 
     // Fetch Parish Risk GeoJSON (Orange/Red Highlight Engine)
     useEffect(() => {
@@ -242,7 +247,8 @@ export const useAuraData = () => {
             hurricaneIntensity,
             greenVectorSlider,
             is3DViewActive,
-            roiMetrics
+            roiMetrics,
+            isPredictiveMode
         },
         setters: {
             setWindSpeed,
@@ -255,7 +261,8 @@ export const useAuraData = () => {
             resetAuraState,
             setGreenVectorSlider,
             setIs3DViewActive,
-            setRoiMetrics
+            setRoiMetrics,
+            setIsPredictiveMode
         },
         data: {
             gridAssets,

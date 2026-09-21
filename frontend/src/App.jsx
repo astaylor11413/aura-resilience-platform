@@ -85,23 +85,58 @@ const inundationLayer = {
   }
 };
 
-// Green Infrastructure Preventative Vector Map Layers
-const greenInfrastructureFillLayer = {
-  id: 'green-infrastructure-fill-layer',
+// Parish Risk Highlighting Layer (Orange/Red Dynamic Render)
+const parishRiskFillLayer = {
+  id: 'parish-risk-fill',
   type: 'fill',
   paint: {
-    'fill-color': '#10b981',
+    'fill-color': ['get', 'fill_color'],
     'fill-opacity': 0.35
   }
 };
 
+const parishRiskLineLayer = {
+  id: 'parish-risk-line',
+  type: 'line',
+  paint: {
+    'line-color': ['get', 'fill_color'],
+    'line-width': 2
+  }
+};
+
+// Preventative Green Infrastructure Vector Map Layers
+const greenInfrastructureFillLayer = {
+  id: 'green-infrastructure-fill',
+  type: 'fill',
+  paint: {
+    'fill-color': '#10b981',
+    'fill-opacity': 0.4
+  }
+};
+
 const greenInfrastructureLineLayer = {
-  id: 'green-infrastructure-line-layer',
+  id: 'green-infrastructure-line',
   type: 'line',
   paint: {
     'line-color': '#34d399',
     'line-width': 2,
     'line-dasharray': [2, 2]
+  }
+};
+
+// 3D City View Building Extrusions
+const building3DLayer = {
+  id: '3d-buildings',
+  source: 'composite',
+  'source-layer': 'building',
+  filter: ['==', 'extrude', 'true'],
+  type: 'fill-extrusion',
+  minzoom: 12,
+  paint: {
+    'fill-extrusion-color': '#334155',
+    'fill-extrusion-height': ['get', 'height'],
+    'fill-extrusion-base': ['get', 'min_height'],
+    'fill-extrusion-opacity': 0.7
   }
 };
 
@@ -198,6 +233,20 @@ export default function App() {
   const [viewState, setViewState] = useState({
     longitude: -76.78, latitude: 17.95, zoom: 11, pitch: 35
   });
+
+  const toggle3DMode = () => {
+    const next3DState = !state.is3DViewActive;
+    setters.setIs3DViewActive(next3DState);
+    const targetCoords = next3DState ? HOME_3D_COORDINATES : HOME_COORDINATES;
+    
+    setViewState(targetCoords);
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        ...targetCoords,
+        duration: 2000
+      });
+    }
+  };
 
   // Clean up timers on component unmount
   useEffect(() => {
@@ -766,12 +815,24 @@ export default function App() {
   </>
 )}
 
-          {/* Dynamic Preventative Green Infrastructure Layer */}
-          {geoJson?.greenInfrastructureGeoJson && (
-            <Source id="green-infrastructure-data" type="geojson" data={geoJson.greenInfrastructureGeoJson}>
-              <Layer {...greenInfrastructureFillLayer} />
-              <Layer {...greenInfrastructureLineLayer} />
-            </Source>
+         
+        {/* 3D City View Building Extrusions */}
+        {state.is3DViewActive && <Layer {...building3DLayer} />}
+
+        {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
+        {geoJson.parishGeoJson && (
+          <Source id="parish-risk-data" type="geojson" data={geoJson.parishGeoJson}>
+            <Layer {...parishRiskFillLayer} />
+            <Layer {...parishRiskLineLayer} />
+          </Source>
+        )}
+
+        {/* Dynamic Preventative Green Infrastructure Vector Render */}
+        {geoJson.greenInfrastructureGeoJson && (
+          <Source id="green-infrastructure-data" type="geojson" data={geoJson.greenInfrastructureGeoJson}>
+            <Layer {...greenInfrastructureFillLayer} />
+            <Layer {...greenInfrastructureLineLayer} />
+          </Source>
         )}
           {/* 4. GNN SUBSTATION NODES - RENDERED DIRECTLY TO DARK MAP BASE */}
           <Source id="substation-data" type="geojson" data={sanitizedSubstations}>
@@ -886,7 +947,7 @@ export default function App() {
                 </div>
               )}
             </div>
-            
+            <div className="h-4 w-[1px] bg-slate-700" />
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -896,9 +957,128 @@ export default function App() {
               />
               <span>Air Gapped Mode</span>
             </label>
+            <div className="h-4 w-[1px] bg-slate-700" />
+
+            {/* New Predictive Planning Mode Checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-mono text-emerald-400 font-semibold hover:text-emerald-300">
+              <input
+                type="checkbox"
+                checked={state.isPredictiveMode}
+                onChange={e => setters.setIsPredictiveMode(e.target.checked)}
+                className="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-0 focus:ring-offset-0 accent-emerald-500 cursor-pointer"
+              />
+              <span>Predictive Planning Mode</span>
+            </label>
           </div>
         </header>
+        
+        {/* Dynamic HUD Panel Render via Ternary Condition */}
+        {state.isPredictiveMode ? (
+        
+        /* ================= PREDICTIVE PLANNING HUD OVERLAYS ================= */
+        <>
+          {/* Left Panel: Green Infrastructure Slider & Controls */}
+          <div className="absolute top-4 left-4 z-20 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        <HudPanel title="Aura Infrastructure Vector HUD">
+          <div className="flex flex-col gap-3 text-xs text-white font-mono">
+            
+            {/* Preventative Green Vector Slider Controller */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between text-emerald-400 font-bold">
+                <span>Green Infrastructure Vector:</span>
+                <span>{state.greenVectorSlider.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="3.0"
+                step="0.1"
+                value={state.greenVectorSlider}
+                onChange={e => setters.setGreenVectorSlider(parseFloat(e.target.value))}
+                className="w-full accent-emerald-500 cursor-pointer pointer-events-auto"
+              />
+            </div>
 
+            {/* Hurricane Telemetry Control */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between text-amber-400">
+                <span>Storm Telemetry Wind Speed:</span>
+                <span>{state.windSpeed} MPH</span>
+              </div>
+              <input
+                type="range"
+                min="20"
+                max="120"
+                step="5"
+                value={state.windSpeed}
+                onChange={e => setters.setWindSpeed(parseInt(e.target.value))}
+                className="w-full accent-amber-500 cursor-pointer pointer-events-auto"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-white/10 pointer-events-auto">
+              <button
+                onClick={toggle3DMode}
+                className={`flex-1 py-1.5 rounded border flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors ${
+                  state.is3DViewActive 
+                    ? 'bg-cyan-600 border-cyan-400 text-white' 
+                    : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                <Box size={14} /> {state.is3DViewActive ? 'Exit 3D City' : '3D City View'}
+              </button>
+            </div>
+          </div>
+        </HudPanel>
+      </div>
+
+      {/* CENTER VISUAL ACCOMMODATION COUPLER */}
+      <div className="hidden md:block md:col-span-6" />
+
+          {/* Right Panel: Dynamic ROI & Avoided-Loss Calculation Engine */}
+          <div className="absolute top-4 right-4 z-20 max-w-xs w-full pointer-events-none">
+        <HudPanel title="Avoided Loss & ROI Engine">
+          <div className="flex flex-col gap-2.5 text-xs text-white font-mono">
+            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+              <span className="text-slate-400 flex items-center gap-1">
+                <DollarSign size={12} className="text-emerald-400" /> Infrastructure CapEx:
+              </span>
+              <span className="font-bold text-slate-200">
+                ${(state.roiMetrics.green_infrastructure_capex_usd / 1000000).toFixed(2)}M
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+              <span className="text-slate-400 flex items-center gap-1">
+                <ShieldAlert size={12} className="text-amber-400" /> Avoided Asset Damage:
+              </span>
+              <span className="font-bold text-emerald-400">
+                ${(state.roiMetrics.avoided_loss_usd / 1000000).toFixed(2)}M
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+              <span className="text-slate-400 flex items-center gap-1">
+                <TrendingUp size={12} className="text-cyan-400" /> Net Economic ROI:
+              </span>
+              <span className={`font-bold ${state.roiMetrics.roi_percentage >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
+                {state.roiMetrics.roi_percentage.toFixed(1)}%
+              </span>
+            </div>
+
+            <div className="bg-slate-900/80 p-2 rounded border border-emerald-500/20 text-[10px] text-emerald-300">
+              Wave & Storm Surge Attenuation: <span className="font-bold">{state.roiMetrics.attenuation_effectiveness_pct}%</span>
+            </div>
+          </div>
+        </HudPanel>
+      </div>
+        </>
+
+      ) : (
+
+        /* ================= STANDARD OPERATIONAL HUD OVERLAYS ================= */
+        <>
+          {/*Default HUD Panels */}
         {/* LEFT CONTROL COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
           <div>
@@ -1124,6 +1304,9 @@ export default function App() {
 </div>
           </HudPanel>
         </div>
+        </>
+
+      )}
       </div>
     </div>
   );
