@@ -5,7 +5,6 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuraData } from './hooks/useAuraData';
 import { HudPanel } from './components/HudPanel';
 import { ImpactAnalysisPanel } from './components/ImpactAnalysisPanel';
-import { ShieldAlert } from 'lucide-react';
 import ThreeDSimulationPage from './ThreeDSimulationPage';
 import { triggerDataDownload } from './utils/exportGeospatialData';
 import {
