@@ -20,9 +20,11 @@ export const useAuraData = () => {
     const [hurricaneIntensity, setHurricaneIntensity] = useState(() => getStored('hurricaneIntensity', 1));
     const [windSpeed, setWindSpeed] = useState(() => getStored('windSpeed', 25));
     const [slrMeters, setSlrMeters] = useState(() => getStored('slrMeters', 0.0));
-    const [greenVectorSlider, setGreenVectorSlider] = useState(() => getStored('greenVectorSlider', 1.0));
     const [activeThreatIndex, setActiveThreatIndex] = useState(() => getStored('activeThreatIndex', null));
     const [airGapped, setAirGapped] = useState(() => getStored('airGapped', false));
+    const [greenVectorSlider, setGreenVectorSlider] = useState(() => getStored('greenVectorSlider', 1.0));
+    const [is3DViewActive, setIs3DViewActive] = useState(() => getStored('is3DViewActive', false));
+
 
     // Data Repositories
     const [gridAssets, setGridAssets] = useState([]);
@@ -33,6 +35,14 @@ export const useAuraData = () => {
     const [routingGeoJson, setRoutingGeoJson] = useState(INITIAL_GEOJSON);
     const [inundationGeoJson, setInundationGeoJson] = useState(INITIAL_GEOJSON);
     const [greenInfrastructureGeoJson, setGreenInfrastructureGeoJson] = useState(INITIAL_GEOJSON);
+    const [parishGeoJson, setParishGeoJson] = useState(INITIAL_GEOJSON);
+    const [roiMetrics, setRoiMetrics] = useState({
+        green_infrastructure_capex_usd: 0,
+        avoided_loss_usd: 0,
+        net_economic_savings_usd: 0,
+        roi_percentage: 0,
+        attenuation_effectiveness_pct: 0
+    });
 
     // Environment Base URL
     const API_BASE = import.meta.env.VITE_AURA_API_BASE_URL || 'https://aura-resilience-platform-prod.onrender.com/api/v1';
@@ -42,10 +52,11 @@ export const useAuraData = () => {
         localStorage.setItem('aura_hurricaneIntensity', JSON.stringify(hurricaneIntensity));
         localStorage.setItem('aura_windSpeed', JSON.stringify(windSpeed));
         localStorage.setItem('aura_slrMeters', JSON.stringify(slrMeters));
-        localStorage.setItem('aura_greenVectorSlider', JSON.stringify(greenVectorSlider));
         localStorage.setItem('aura_activeThreatIndex', JSON.stringify(activeThreatIndex));
         localStorage.setItem('aura_airGapped', JSON.stringify(airGapped));
-    }, [hurricaneIntensity, windSpeed, slrMeters, greenVectorSlider, activeThreatIndex, airGapped]);
+        localStorage.setItem('aura_greenVectorSlider', JSON.stringify(greenVectorSlider));
+        localStorage.setItem('aura_is3DViewActive', JSON.stringify(is3DViewActive));
+    }, [hurricaneIntensity, windSpeed, slrMeters, activeThreatIndex, airGapped, greenVectorSlider, is3DViewActive]);
 
     // 1. Grid Simulation Sync
     useEffect(() => {
@@ -95,7 +106,7 @@ export const useAuraData = () => {
         return () => controller.abort();
     }, [slrMeters, airGapped, API_BASE]);
 
-    //Dynamic Green Infrastructure Vector Sync
+    /* Advanced Dynamic Green Infrastructure Vector Sync
     useEffect(() => {
         if (airGapped) return;
 
@@ -117,7 +128,34 @@ export const useAuraData = () => {
             });
 
         return () => controller.abort();
+    }, [greenVectorSlider, airGapped, API_BASE]);*/
+
+    // Fetch Parish Risk GeoJSON (Orange/Red Highlight Engine)
+    useEffect(() => {
+        if (airGapped) return;
+        fetch(`${API_BASE}/spatial/parishes?wind_speed_mph=${windSpeed}&slider_vector=${greenVectorSlider}`)
+            .then(res => res.json())
+            .then(data => setParishGeoJson(data || INITIAL_GEOJSON))
+            .catch(() => setParishGeoJson(INITIAL_GEOJSON));
+    }, [windSpeed, greenVectorSlider, airGapped, API_BASE]);
+
+    // Fetch Dynamic Green Infrastructure Vector GeoJSON
+    useEffect(() => {
+        if (airGapped) return;
+        fetch(`${API_BASE}/preventative/green-infrastructure?slider_vector=${greenVectorSlider}`)
+            .then(res => res.json())
+            .then(data => setGreenInfrastructureGeoJson(data || INITIAL_GEOJSON))
+            .catch(() => setGreenInfrastructureGeoJson(INITIAL_GEOJSON));
     }, [greenVectorSlider, airGapped, API_BASE]);
+
+    // Fetch Dynamic ROI & Avoided Loss Analytics
+    useEffect(() => {
+        if (airGapped) return;
+        fetch(`${API_BASE}/analytics/roi-calculator?slider_vector=${greenVectorSlider}&wind_speed_mph=${windSpeed}`)
+            .then(res => res.json())
+            .then(data => setRoiMetrics(data))
+            .catch(() => {});
+    }, [greenVectorSlider, windSpeed, airGapped, API_BASE]);
 
     // 3. Static Oceanographic & Logistics Sync
     useEffect(() => {
@@ -196,23 +234,28 @@ export const useAuraData = () => {
         state: {
             windSpeed,
             slrMeters,
-            greenVectorSlider,
             activeThreatIndex,
             airGapped,
             gridState,
             derOutput,
             isSimulating,
-            hurricaneIntensity
+            hurricaneIntensity,
+            greenVectorSlider,
+            is3DViewActive,
+            roiMetrics
         },
         setters: {
             setWindSpeed,
             setSlrMeters,
-            setGreenVectorSlider,
             setActiveThreatIndex,
             setAirGapped,
+            setTriageReport,
             setIsSimulating,
             setHurricaneIntensity,
-            resetAuraState
+            resetAuraState,
+            setGreenVectorSlider,
+            setIs3DViewActive,
+            setRoiMetrics
         },
         data: {
             gridAssets,
@@ -224,7 +267,8 @@ export const useAuraData = () => {
             compiledSubstationGeoJson,
             compiledMarineGeoJson,
             inundationGeoJson,
-            greenInfrastructureGeoJson
+            greenInfrastructureGeoJson,
+            parishGeoJson
         }
     };
 };
