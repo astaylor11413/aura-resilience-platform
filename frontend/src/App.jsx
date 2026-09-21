@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Map, { Source, Layer, Marker } from 'react-map-gl';
-import { Home } from 'lucide-react';
+import { Home, ShieldAlert, Box, DollarSign, TrendingUp } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuraData } from './hooks/useAuraData';
 import { HudPanel } from './components/HudPanel';
@@ -16,11 +16,19 @@ import {
   getModel
 } from './utils/edgeEngine';
 
+
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const HOME_COORDINATES = {
   longitude: -76.78,
   latitude: 17.95,
   zoom: 11
+};
+const HOME_3D_COORDINATES = {
+  longitude: -76.78,
+  latitude: 17.95,
+  zoom: 15.5,
+  pitch: 60,
+  bearing: -17.6
 };
 
 // --- STATIC MAP STYLE LAYERS ---
@@ -235,7 +243,7 @@ export default function App() {
   });
 
   const toggle3DMode = () => {
-    const next3DState = !state.is3DViewActive;
+    const next3DState = !globalState.is3DViewActive;
     setters.setIs3DViewActive(next3DState);
     const targetCoords = next3DState ? HOME_3D_COORDINATES : HOME_COORDINATES;
     
@@ -817,7 +825,7 @@ export default function App() {
 
          
         {/* 3D City View Building Extrusions */}
-        {state.is3DViewActive && <Layer {...building3DLayer} />}
+        {globalState.is3DViewActive && <Layer {...building3DLayer} />}
 
         {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
         {geoJson.parishGeoJson && (
@@ -963,7 +971,7 @@ export default function App() {
             <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-mono text-emerald-400 font-semibold hover:text-emerald-300">
               <input
                 type="checkbox"
-                checked={state.isPredictiveMode}
+                checked={globalState.isPredictiveMode}
                 onChange={e => setters.setIsPredictiveMode(e.target.checked)}
                 className="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-0 focus:ring-offset-0 accent-emerald-500 cursor-pointer"
               />
@@ -973,7 +981,7 @@ export default function App() {
         </header>
         
         {/* Dynamic HUD Panel Render via Ternary Condition */}
-        {state.isPredictiveMode ? (
+        {globalState.isPredictiveMode ? (
         
         /* ================= PREDICTIVE PLANNING HUD OVERLAYS ================= */
         <>
@@ -986,14 +994,14 @@ export default function App() {
             <div className="flex flex-col gap-1">
               <div className="flex justify-between text-emerald-400 font-bold">
                 <span>Green Infrastructure Vector:</span>
-                <span>{state.greenVectorSlider.toFixed(1)}x</span>
+                <span>{globalState.greenVectorSlider.toFixed(1)}x</span>
               </div>
               <input
                 type="range"
                 min="0.5"
                 max="3.0"
                 step="0.1"
-                value={state.greenVectorSlider}
+                value={globalState.greenVectorSlider}
                 onChange={e => setters.setGreenVectorSlider(parseFloat(e.target.value))}
                 className="w-full accent-emerald-500 cursor-pointer pointer-events-auto"
               />
@@ -1003,14 +1011,14 @@ export default function App() {
             <div className="flex flex-col gap-1">
               <div className="flex justify-between text-amber-400">
                 <span>Storm Telemetry Wind Speed:</span>
-                <span>{state.windSpeed} MPH</span>
+                <span>{globalState.windSpeed} MPH</span>
               </div>
               <input
                 type="range"
                 min="20"
                 max="120"
                 step="5"
-                value={state.windSpeed}
+                value={globalState.windSpeed}
                 onChange={e => setters.setWindSpeed(parseInt(e.target.value))}
                 className="w-full accent-amber-500 cursor-pointer pointer-events-auto"
               />
@@ -1020,12 +1028,12 @@ export default function App() {
               <button
                 onClick={toggle3DMode}
                 className={`flex-1 py-1.5 rounded border flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors ${
-                  state.is3DViewActive 
+                  globalState.is3DViewActive 
                     ? 'bg-cyan-600 border-cyan-400 text-white' 
                     : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'
                 }`}
               >
-                <Box size={14} /> {state.is3DViewActive ? 'Exit 3D City' : '3D City View'}
+                <Box size={14} /> {globalState.is3DViewActive ? 'Exit 3D City' : '3D City View'}
               </button>
             </div>
           </div>
@@ -1044,7 +1052,7 @@ export default function App() {
                 <DollarSign size={12} className="text-emerald-400" /> Infrastructure CapEx:
               </span>
               <span className="font-bold text-slate-200">
-                ${(state.roiMetrics.green_infrastructure_capex_usd / 1000000).toFixed(2)}M
+                ${(globalState.roiMetrics.green_infrastructure_capex_usd / 1000000).toFixed(2)}M
               </span>
             </div>
 
@@ -1053,7 +1061,7 @@ export default function App() {
                 <ShieldAlert size={12} className="text-amber-400" /> Avoided Asset Damage:
               </span>
               <span className="font-bold text-emerald-400">
-                ${(state.roiMetrics.avoided_loss_usd / 1000000).toFixed(2)}M
+                ${(globalState.roiMetrics.avoided_loss_usd / 1000000).toFixed(2)}M
               </span>
             </div>
 
@@ -1062,12 +1070,12 @@ export default function App() {
                 <TrendingUp size={12} className="text-cyan-400" /> Net Economic ROI:
               </span>
               <span className={`font-bold ${state.roiMetrics.roi_percentage >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
-                {state.roiMetrics.roi_percentage.toFixed(1)}%
+                {globalState.roiMetrics.roi_percentage.toFixed(1)}%
               </span>
             </div>
 
             <div className="bg-slate-900/80 p-2 rounded border border-emerald-500/20 text-[10px] text-emerald-300">
-              Wave & Storm Surge Attenuation: <span className="font-bold">{state.roiMetrics.attenuation_effectiveness_pct}%</span>
+              Wave & Storm Surge Attenuation: <span className="font-bold">{globalState.roiMetrics.attenuation_effectiveness_pct}%</span>
             </div>
           </div>
         </HudPanel>
