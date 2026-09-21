@@ -15,7 +15,7 @@ from transformers import pipeline
 from valuation_engine import calculate_marine_economic_impact
 
 # Multi-layered spatial state matrices
-from database import mock_supply_db, mock_demand_db, mock_ocean_anomalies, mock_coastal_dem, mock_grid_substations, mock_green_infrastructure
+from database import mock_supply_db, mock_demand_db, mock_ocean_anomalies, mock_coastal_dem, mock_grid_substations, mock_green_infrastructure, mock_parishes
 
 app = Flask(__name__)
 CORS(app)
@@ -219,6 +219,46 @@ def simulate_inundation():
             })
     return jsonify(flooded_features), 200
 
+# Parish-Level Highlighting Route (Orange/Red Dynamic Risk Mapping)
+@app.route('/api/v1/spatial/parishes', methods=['GET'])
+def get_parish_risk_geojson():
+    wind_speed = request.args.get('wind_speed_mph', default=25.0, type=float)
+    green_vector = request.args.get('slider_vector', default=1.0, type=float)
+    
+    features = []
+    for parish in mock_parishes:
+        # Dynamic Risk Assessment: Wind raises risk, Green Infrastructure vector attenuates risk
+        attenuated_risk = parish["base_risk"] + (wind_speed * 0.005) - (green_vector * 0.15)
+        attenuated_risk = max(0.0, min(1.0, attenuated_risk))
+        
+        # Color Threshold Mapping: Orange = Elevated Risk (>0.5), Red = Critical Risk (>0.75)
+        if attenuated_risk >= 0.75:
+            risk_level = "CRITICAL"
+            fill_color = "#ef4444" # Red
+        elif attenuated_risk >= 0.45:
+            risk_level = "ELEVATED"
+            fill_color = "#f97316" # Orange
+        else:
+            risk_level = "MODERATE"
+            fill_color = "#10b981" # Emerald Green
+            
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "id": parish["id"],
+                "name": parish["name"],
+                "risk_score": round(attenuated_risk, 2),
+                "risk_level": risk_level,
+                "fill_color": fill_color
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": parish["coordinates"]
+            }
+        })
+        
+    return jsonify({"type": "FeatureCollection", "features": features}), 200
+
 # 5. Dynamic Sliding Vector Preventative Green Infrastructure Engine
 @app.route('/api/v1/preventative/green-infrastructure', methods=['GET'])
 def get_green_infrastructure():
@@ -254,6 +294,31 @@ def get_green_infrastructure():
         })
         
     return jsonify({"type": "FeatureCollection", "features": features}), 200
+
+# Dynamic ROI & Avoided-Loss Calculation Engine Endpoint
+@app.route('/api/v1/analytics/roi-calculator', methods=['GET'])
+def calculate_avoided_losses():
+    slider_vector = request.args.get('slider_vector', default=1.0, type=float)
+    wind_speed = request.args.get('wind_speed_mph', default=25.0, type=float)
+    
+    base_capex = sum([z["base_cost_usd"] for z in mock_green_infrastructure]) * slider_vector
+    
+    # Avoided Loss Physics Engine Formula
+    potential_damage_usd = 12500000.0 * (wind_speed / 50.0)
+    mitigation_factor = min(0.85, 0.25 * math.pow(slider_vector, 1.2))
+    
+    avoided_loss_usd = potential_damage_usd * mitigation_factor
+    net_savings_usd = avoided_loss_usd - base_capex
+    roi_pct = ((avoided_loss_usd - base_capex) / base_capex) * 100 if base_capex > 0 else 0.0
+    
+    return jsonify({
+        "green_infrastructure_capex_usd": round(base_capex, 2),
+        "estimated_potential_damage_usd": round(potential_damage_usd, 2),
+        "avoided_loss_usd": round(avoided_loss_usd, 2),
+        "net_economic_savings_usd": round(net_savings_usd, 2),
+        "roi_percentage": round(roi_pct, 1),
+        "attenuation_effectiveness_pct": round(mitigation_factor * 100, 1)
+    }), 200
 
 # 6. Integrated Ingestion Pipeline Configuration Matrix
 TACTICAL_PLAYBOOK_MATRIX = {
