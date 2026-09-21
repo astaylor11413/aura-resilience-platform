@@ -820,12 +820,51 @@ export default function App() {
         {globalState.is3DViewActive && <Layer {...building3DLayer} />}
 
         {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
-        {geoJson.parishGeoJson && (
-          <Source id="parish-risk-data" type="geojson" data={geoJson.parishGeoJson}>
-            <Layer {...parishRiskFillLayer} />
-            <Layer {...parishRiskLineLayer} />
-          </Source>
-        )}
+      {globalState.isPredictiveMode && geoJson?.parishGeoJson && (
+  <Source id="parish-risk-data" type="geojson" data={geoJson.parishGeoJson}>
+    <Layer 
+      {...parishRiskFillLayer} 
+      onMouseEnter={() => {
+        if (mapRef.current) mapRef.current.getCanvas().style.cursor = 'pointer';
+      }}
+      onMouseLeave={() => {
+        if (mapRef.current) mapRef.current.getCanvas().style.cursor = '';
+      }}
+      onClick={(e) => {
+        if (e.features && e.features.length > 0) {
+          const clickedFeature = e.features[0];
+          const parishName = clickedFeature.properties.PARISH || clickedFeature.properties.name || "Territory";
+          
+          // Set active parish in global state
+          setters.setSelectedParish(parishName);
+
+          // Extract center/first coordinate safely
+          const geom = clickedFeature.geometry;
+          let centerLngLat = [-76.792, 17.971]; // Fallback (Kingston)
+
+          if (geom.type === 'Polygon') {
+            centerLngLat = geom.coordinates[0][0];
+          } else if (geom.type === 'MultiPolygon') {
+            centerLngLat = geom.coordinates[0][0][0];
+          }
+
+          // Fly map camera to the target parish and tilt into 3D perspective
+          mapRef.current?.flyTo({
+            center: centerLngLat,
+            zoom: 15.5,
+            pitch: 60,
+            bearing: -17.6,
+            duration: 2000
+          });
+
+          // Activate 3D extrusion view
+          setters.setIs3DViewActive(true);
+        }
+      }}
+    />
+    <Layer {...parishRiskLineLayer} />
+  </Source>
+)}
 
         {/* Dynamic Preventative Green Infrastructure Vector Render */}
         {geoJson.greenInfrastructureGeoJson && (
@@ -1034,40 +1073,38 @@ export default function App() {
 
           {/* Right Panel: Dynamic ROI & Avoided-Loss Calculation Engine */}
           <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-        <HudPanel title="Avoided Loss & ROI Engine">
-          <div className="flex flex-col gap-2.5 text-xs text-white font-mono">
-            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-              <span className="text-slate-400 flex items-center gap-1">
-                <DollarSign size={12} className="text-emerald-400" /> Infrastructure CapEx:
-              </span>
-              <span className="font-bold text-slate-200">
-                ${(globalState.roiMetrics.green_infrastructure_capex_usd / 1000000).toFixed(2)}M
-              </span>
-            </div>
+        <HudPanel title={globalState.selectedParish ? `ROI Engine — ${globalState.selectedParish}` : "Select a Parish to Simulate"}>
+  {globalState.selectedParish ? (
+    <div className="flex flex-col gap-2.5 text-xs text-white font-mono">
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <span className="text-slate-400">Target Community:</span>
+        <span className="font-bold text-emerald-400">{globalState.selectedParish}</span>
+      </div>
 
-            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-              <span className="text-slate-400 flex items-center gap-1">
-                <ShieldAlert size={12} className="text-amber-400" /> Avoided Asset Damage:
-              </span>
-              <span className="font-bold text-emerald-400">
-                ${(globalState.roiMetrics.avoided_loss_usd / 1000000).toFixed(2)}M
-              </span>
-            </div>
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <span className="text-slate-400">Infrastructure CapEx:</span>
+        <span className="font-bold text-slate-200">
+          ${((globalState.roiMetrics.green_infrastructure_capex_usd * globalState.greenVectorSlider) / 1000000).toFixed(2)}M
+        </span>
+      </div>
 
-            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-              <span className="text-slate-400 flex items-center gap-1">
-                <TrendingUp size={12} className="text-cyan-400" /> Net Economic ROI:
-              </span>
-              <span className={`font-bold ${globalState.roiMetrics.roi_percentage >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
-                {globalState.roiMetrics.roi_percentage.toFixed(1)}%
-              </span>
-            </div>
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <span className="text-slate-400">Avoided Loss:</span>
+        <span className="font-bold text-emerald-400">
+          ${((globalState.roiMetrics.avoided_loss_usd * globalState.greenVectorSlider) / 1000000).toFixed(2)}M
+        </span>
+      </div>
 
-            <div className="bg-slate-900/80 p-2 rounded border border-emerald-500/20 text-[10px] text-emerald-300">
-              Wave & Storm Surge Attenuation: <span className="font-bold">{globalState.roiMetrics.attenuation_effectiveness_pct}%</span>
-            </div>
-          </div>
-        </HudPanel>
+      <div className="bg-slate-900/80 p-2 rounded border border-emerald-500/20 text-[10px] text-emerald-300">
+        Wave Attenuation: <span className="font-bold">{(globalState.roiMetrics.attenuation_effectiveness_pct * globalState.greenVectorSlider).toFixed(1)}%</span>
+      </div>
+    </div>
+  ) : (
+    <div className="text-xs text-slate-400 italic py-4 text-center">
+      Click on a territory boundary on the map to focus 3D simulation and calculate Green Infrastructure ROI.
+    </div>
+  )}
+</HudPanel>
       </div>
         </>
 
