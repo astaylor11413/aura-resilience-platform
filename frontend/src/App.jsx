@@ -173,25 +173,6 @@ const routingLayer = {
   }
 };
 
-const structuralFootprintLayer = {
-  id: 'usa-structures-extruded',
-  type: 'fill-extrusion',
-  paint: {
-    'fill-extrusion-color': [
-      'match',
-      ['get', 'usage_type'],
-      'GOVERNMENTAL', '#f43f5e',
-      'COMMERCIAL', '#fb923c',
-      'RESIDENTIAL', '#38bdf8',
-      '#94a3b8'
-    ],
-    'fill-extrusion-height': ['get', 'height_meters'],
-    'fill-extrusion-base': 0,
-    'fill-extrusion-opacity': 0.85
-  }
-};
-
-
 const getLogisticsBlurb = (facilityName, urgency) => {
   const name = String(facilityName || '').toLowerCase();
   const isKitchen = name.includes("kitchen");
@@ -297,25 +278,37 @@ export default function App() {
     };
   }, [currentTimeStep, globalState.windSpeed, globalState.slrMeters]);
 
-  const usaStructuresLayerConfig = useMemo(() => {
+  const jamaicaStructuresLayerConfig = useMemo(() => {
     const depthFactor = structuralStats.historicalDepthProfile[currentTimeStep];
+
     return {
-      id: 'usa-structures-extruded-3d',
-      type: 'fill-extrusion',
-      paint: {
-        'fill-extrusion-color': depthFactor > 0.9
-          ? '#f43f5e'
-          : depthFactor > 0.6
-            ? '#fb923c'
-            : depthFactor > 0.3
-              ? '#facc15'
-              : '#38bdf8',
-        'fill-extrusion-height': ['coalesce', ['get', 'height_meters'], 4],
-        'fill-extrusion-base': 0,
-        'fill-extrusion-opacity': 0.85
-      }
-    };
-  }, [currentTimeStep, structuralStats]);
+    id: 'jamaica-structures-extruded-3d',
+    type: 'fill-extrusion',
+    source: 'composite',        // Mapbox Global Vector Tiles
+    'source-layer': 'building', // Global 3D building layer
+    minzoom: 12,                // Starts showing buildings as you zoom into Jamaica
+    paint: {
+      // Dynamic predictive color shift based on simulation step
+      'fill-extrusion-color': depthFactor > 0.9
+        ? '#f43f5e'
+        : depthFactor > 0.6
+          ? '#fb923c'
+          : depthFactor > 0.3
+            ? '#facc15'
+            : '#38bdf8',
+
+      // 'coalesce' tries 'height', then 'min_height' + 6, and defaults to 8 meters if missing
+      'fill-extrusion-height': [
+        'coalesce',
+        ['get', 'height'],
+        ['*', ['get', 'building:levels'], 3.5], // 3.5m per floor estimate
+        8                                      // Fallback height (8m) so every Jamaican structure extrudes 3D
+      ],
+      'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
+      'fill-extrusion-opacity': 0.85
+    }
+  };
+}, [currentTimeStep, structuralStats]);
 
   const handlePanToTarget = (lng, lat) => {
     if (!lng || !lat) return;
@@ -847,11 +840,8 @@ export default function App() {
           </Source>
 
           {/* 5. 3D STRUCTURAL EXTRUSIONS LAYER - RUNS DURING SIMULATION TIMELINE */}
-          {showImpactAnalysis && geoJson?.structuresGeoJson && (
-            <Source id="fema-structures" type="geojson" data={geoJson.structuresGeoJson}>
-              <Layer {...usaStructuresLayerConfig} />
-              <Layer {...structuralFootprintLayer} id="usa-structures-base" />
-            </Source>
+          {showImpactAnalysis && (
+              <Layer {...jamaicaStructuresLayerConfig} />
           )}
 
           {/* 6. CITIZEN INCIDENT MARKERS (CITIZENS-STYLE) */}

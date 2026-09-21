@@ -25,6 +25,7 @@ export const useAuraData = () => {
     const [greenVectorSlider, setGreenVectorSlider] = useState(() => getStored('greenVectorSlider', 1.0));
     const [is3DViewActive, setIs3DViewActive] = useState(() => getStored('is3DViewActive', false));
     const [isPredictiveMode, setIsPredictiveMode] = useState(() => getStored('isPredictiveMode', false));
+    
 
     // Data Repositories
     const [gridAssets, setGridAssets] = useState([]);
@@ -105,6 +106,7 @@ export const useAuraData = () => {
 
         return () => controller.abort();
     }, [slrMeters, airGapped, API_BASE]);
+
 
     /* Advanced Dynamic Green Infrastructure Vector Sync
     useEffect(() => {

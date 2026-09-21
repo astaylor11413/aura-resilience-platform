@@ -89,14 +89,17 @@ mock_green_infrastructure = [
         "name": "Kingston Coastal Mangrove Barrier",
         "type": "Mangrove Restoration Zone",
         "base_center": [-76.77, 17.94],
-        "base_radius_deg": 0.012
+        "base_radius_deg": 0.012,
+        "base_cost_usd": 1500000.0
     },
     {
         "id": "green-zone-02",
         "name": "Portmore Urban Sponge Park Corridor",
         "type": "Permeable Bioswale Network",
         "base_center": [-76.87, 17.95],
-        "base_radius_deg": 0.015
+        "base_radius_deg": 0.015,
+        "base_cost_usd": 1000000.0
+
     }
 ]
 
