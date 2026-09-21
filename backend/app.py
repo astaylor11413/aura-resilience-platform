@@ -15,7 +15,7 @@ from transformers import pipeline
 from valuation_engine import calculate_marine_economic_impact
 
 # Multi-layered spatial state matrices
-from database import mock_supply_db, mock_demand_db, mock_ocean_anomalies, mock_coastal_dem, mock_grid_substations
+from database import mock_supply_db, mock_demand_db, mock_ocean_anomalies, mock_coastal_dem, mock_grid_substations, mock_green_infrastructure
 
 app = Flask(__name__)
 CORS(app)
@@ -219,7 +219,43 @@ def simulate_inundation():
             })
     return jsonify(flooded_features), 200
 
-# 5. Integrated Ingestion Pipeline Configuration Matrix
+# 5. Dynamic Sliding Vector Preventative Green Infrastructure Engine
+@app.route('/api/v1/preventative/green-infrastructure', methods=['GET'])
+def get_green_infrastructure():
+    slider_vector = request.args.get('slider_vector', default=1.0, type=float)
+    features = []
+    
+    for zone in mock_green_infrastructure:
+        center_lon, center_lat = zone["base_center"]
+        radius = zone["base_radius_deg"] * max(0.2, slider_vector)
+        
+        # Calculate dynamic octagonal polygon buffer driven by slider vector
+        polygon_coords = []
+        for i in range(8):
+            angle = (i / 8.0) * 2 * math.pi
+            lon = center_lon + radius * math.cos(angle)
+            lat = center_lat + radius * math.sin(angle)
+            polygon_coords.append([lon, lat])
+        polygon_coords.append(polygon_coords[0]) # Close polygon ring
+        
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "id": zone["id"],
+                "name": zone["name"],
+                "type": zone["type"],
+                "expansion_multiplier": slider_vector,
+                "attenuation_capacity_pct": min(95.0, round(slider_vector * 30.0, 1))
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]
+            }
+        })
+        
+    return jsonify({"type": "FeatureCollection", "features": features}), 200
+
+# 6. Integrated Ingestion Pipeline Configuration Matrix
 TACTICAL_PLAYBOOK_MATRIX = {
   "Severe Flooding": {
     "playbook": "WARNIN: Di sea wall dem lick over and di water a rush in deep! Lock di automated micro-gates right now. Clear out di low road dem and make sure every single emergency truck drive go up pon di hill road dem before water trap dem.",
@@ -297,7 +333,7 @@ def transcribe_and_triage_report():
         "actionable_tactical_playbook": playbook_data["playbook"]
     }), 200
 
-# 6. Outbound Accent-Aware TTS Generation Route
+# Outbound Accent-Aware TTS Generation Route
 @app.route('/api/v1/voice/broadcast', methods=['POST'])
 def generate_dialect_broadcast():
     data = request.get_json() or {}
@@ -331,7 +367,7 @@ def generate_dialect_broadcast():
     except Exception as e: 
         return jsonify({"error": str(e), "info": "Fallback triggered"}), 500
 
-# 7. Layer 3 Alignment: Nearest-Neighbor Euclidean Spatial Route Compiler
+# Layer 3 Alignment: Nearest-Neighbor Euclidean Spatial Route Compiler
 @app.route('/api/v1/spatial/mutual-aid-paths', methods=['GET'])
 def calculate_optimal_routing():
     routes_geojson = {"type": "FeatureCollection", "features": []}
@@ -376,7 +412,8 @@ def system_root_index():
             "grid_simulation": "/api/v1/resilience/simulate-grid",
             "satellite_telemetry": "/api/v1/marine/thermal-anomalies",
             "inundation_model": "/api/v1/hazard/inundation",
-            "spatial_routing": "/api/v1/spatial/mutual-aid-paths"
+            "spatial_routing": "/api/v1/spatial/mutual-aid-paths",
+            "green_infrastructure": "/api/v1/preventative/green-infrastructure"
         }
     }), 200
 

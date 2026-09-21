@@ -82,3 +82,20 @@ mock_demand_db = [
     {"shelter_id": "shelter-02", "shelter_name": "Portmore Civic Refuge", "coordinates": [-76.89, 17.94], "urgency_level": "HIGH"},
     {"shelter_id": "shelter-03", "shelter_name": "Papine Academic Shelter", "coordinates": [-76.74, 18.02], "urgency_level": "MEDIUM"}
 ]
+
+mock_green_infrastructure = [
+    {
+        "id": "green-zone-01",
+        "name": "Kingston Coastal Mangrove Barrier",
+        "type": "Mangrove Restoration Zone",
+        "base_center": [-76.77, 17.94],
+        "base_radius_deg": 0.012
+    },
+    {
+        "id": "green-zone-02",
+        "name": "Portmore Urban Sponge Park Corridor",
+        "type": "Permeable Bioswale Network",
+        "base_center": [-76.87, 17.95],
+        "base_radius_deg": 0.015
+    }
+]
