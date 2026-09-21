@@ -975,7 +975,7 @@ export default function App() {
         /* ================= PREDICTIVE PLANNING HUD OVERLAYS ================= */
         <>
           {/* Left Panel: Green Infrastructure Slider & Controls */}
-          <div className="absolute top-4 left-4 z-20 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+          <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
         <HudPanel title="Aura Infrastructure Vector HUD">
           <div className="flex flex-col gap-3 text-xs text-white font-mono">
             
@@ -1033,7 +1033,7 @@ export default function App() {
       <div className="hidden md:block md:col-span-6" />
 
           {/* Right Panel: Dynamic ROI & Avoided-Loss Calculation Engine */}
-          <div className="absolute top-4 right-4 z-20 max-w-xs w-full pointer-events-none">
+          <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
         <HudPanel title="Avoided Loss & ROI Engine">
           <div className="flex flex-col gap-2.5 text-xs text-white font-mono">
             <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
