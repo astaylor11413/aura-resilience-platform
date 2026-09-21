@@ -97,8 +97,17 @@ const parishRiskFillLayer = {
   id: 'parish-risk-fill',
   type: 'fill',
   paint: {
-    'fill-color': ['get', 'fill_color'],
-    'fill-opacity': 0.35
+    'fill-color': [
+      'coalesce',
+      ['get', 'fill_color'],
+      ['match', ['get', 'risk_level'],
+        'High', '#ef4444',
+        'Medium', '#f59e0b',
+        'Low', '#10b981',
+        '#38bdf8' // Default fallback color if no property is matched
+      ]
+    ],
+    'fill-opacity': 0.4
   }
 };
 
@@ -106,8 +115,8 @@ const parishRiskLineLayer = {
   id: 'parish-risk-line',
   type: 'line',
   paint: {
-    'line-color': ['get', 'fill_color'],
-    'line-width': 2
+    'line-color': '#0284c7',
+    'line-width': 1.5
   }
 };
 
@@ -820,8 +829,10 @@ export default function App() {
         {globalState.is3DViewActive && <Layer {...building3DLayer} />}
 
         {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
-      {globalState.isPredictiveMode && geoJson?.parishGeoJson && (
-  <Source id="parish-risk-data" type="geojson" data={geoJson.parishGeoJson}>
+      {globalState.isPredictiveMode && (
+  <Source id="parish-risk-data" type="geojson" data={
+          geoJson?.parishGeoJson?.features?.length? geoJson.parishGeoJson: "/data/jamaica_parishes.geojson"
+  }>
     <Layer 
       {...parishRiskFillLayer} 
       onMouseEnter={() => {
@@ -833,7 +844,7 @@ export default function App() {
       onClick={(e) => {
         if (e.features && e.features.length > 0) {
           const clickedFeature = e.features[0];
-          const parishName = clickedFeature.properties.PARISH || clickedFeature.properties.name || "Territory";
+          const parishName = clickedFeature.properties?.PARISH || clickedFeature.properties?.name || "Territory";
           
           // Set active parish in global state
           setters.setSelectedParish(parishName);
