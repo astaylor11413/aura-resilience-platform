@@ -99,3 +99,43 @@ mock_green_infrastructure = [
         "base_radius_deg": 0.015
     }
 ]
+
+# Parish-level boundaries and baseline vulnerability parameters
+mock_parishes = [
+    {
+        "id": "parish-kingston",
+        "name": "Kingston Parish",
+        "base_risk": 0.75,
+        "coordinates": [[
+            [-76.82, 17.94],
+            [-76.74, 17.94],
+            [-76.74, 18.00],
+            [-76.82, 18.00],
+            [-76.82, 17.94]
+        ]]
+    },
+    {
+        "id": "parish-st-andrew",
+        "name": "St. Andrew Parish",
+        "base_risk": 0.55,
+        "coordinates": [[
+            [-76.85, 18.00],
+            [-76.70, 18.00],
+            [-76.70, 18.10],
+            [-76.85, 18.10],
+            [-76.85, 18.00]
+        ]]
+    },
+    {
+        "id": "parish-st-catherine",
+        "name": "St. Catherine (Portmore)",
+        "base_risk": 0.85,
+        "coordinates": [[
+            [-76.95, 17.90],
+            [-76.82, 17.90],
+            [-76.82, 18.02],
+            [-76.95, 18.02],
+            [-76.95, 17.90]
+        ]]
+    }
+]
