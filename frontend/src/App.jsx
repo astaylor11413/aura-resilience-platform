@@ -1068,7 +1068,7 @@ export default function App() {
               <span className="text-slate-400 flex items-center gap-1">
                 <TrendingUp size={12} className="text-cyan-400" /> Net Economic ROI:
               </span>
-              <span className={`font-bold ${state.roiMetrics.roi_percentage >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
+              <span className={`font-bold ${globalState.roiMetrics.roi_percentage >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
                 {globalState.roiMetrics.roi_percentage.toFixed(1)}%
               </span>
             </div>
@@ -1204,14 +1204,14 @@ export default function App() {
             <div className="flex flex-col gap-1 border-t border-white/10 pt-2 mt-1">
               <div className="flex justify-between text-emerald-400">
                 <span>Green Infrastructure Vector:</span>
-                <span>{state.greenVectorSlider.toFixed(1)}x</span>
+                <span>{globalState.greenVectorSlider.toFixed(1)}x</span>
               </div>
               <input
                 type="range"
                 min="0.5"
                 max="3.0"
                 step="0.1"
-                value={state.greenVectorSlider}
+                value={globalState.greenVectorSlider}
                 onChange={e => setters.setGreenVectorSlider(parseFloat(e.target.value))}
                 className="w-full accent-emerald-500 cursor-pointer pointer-events-auto"
               />
