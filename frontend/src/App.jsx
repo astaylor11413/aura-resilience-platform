@@ -510,7 +510,11 @@ const urbanBioswaleLayer = {
           });
 
           if (transcriberPanel) {
-            transcriberPanel.scrollIntoView({ behavior: 'smooth' });
+            // Click the header to open it if it's currently collapsed
+              const header = transcriberPanel.querySelector('h3, h2, button, header') || transcriberPanel;
+              header.click();
+            //scroll transcriber into view
+              transcriberPanel.scrollIntoView({ behavior: 'smooth' });
           }
 
           // Typewriter + Triage Execution
