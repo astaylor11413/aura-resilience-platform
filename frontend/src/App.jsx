@@ -1159,6 +1159,63 @@ export default function App() {
               </button>
             </div>
           </div>
+          <div className="flex flex-col gap-4 text-xs font-mono text-slate-300">
+    
+    {/* 1. Storm Telemetry: Wind Speed Slider */}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex justify-between items-center">
+        <label className="text-slate-400">Wind Velocity</label>
+        <span className="text-amber-400 font-bold">{globalState.windSpeed} MPH</span>
+      </div>
+      <input 
+        type="range" 
+        min="0" 
+        max="180" 
+        step="5"
+        value={globalState.windSpeed}
+        onChange={(e) => setters.setWindSpeed(Number(e.target.value))}
+        className="w-full accent-amber-500 bg-slate-800 h-1.5 rounded cursor-pointer"
+      />
+    </div>
+
+    {/* 2. Storm Telemetry: Sea Level / Storm Surge Slider */}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex justify-between items-center">
+        <label className="text-slate-400">Sea Level / Storm Surge</label>
+        <span className="text-cyan-400 font-bold">+{globalState.slrMeters}m Surge</span>
+      </div>
+      <input 
+        type="range" 
+        min="0" 
+        max="5.0" 
+        step="0.25"
+        value={globalState.slrMeters}
+        onChange={(e) => setters.setSlrMeters(Number(e.target.value))}
+        className="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded cursor-pointer"
+      />
+    </div>
+
+    {/* 3. Climate Adaptation: Green Infrastructure Vector Slider */}
+    <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+      <div className="flex justify-between items-center">
+        <label className="text-emerald-400 font-bold">Green Infrastructure Vector</label>
+        <span className="text-emerald-400 font-bold">{globalState.greenVectorSlider}x CapEx</span>
+      </div>
+      <input 
+        type="range" 
+        min="0.2" 
+        max="2.5" 
+        step="0.1"
+        value={globalState.greenVectorSlider}
+        onChange={(e) => setters.setGreenVectorSlider(Number(e.target.value))}
+        className="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded cursor-pointer"
+      />
+      <p className="text-[10px] text-slate-400 leading-tight mt-1">
+        Increases mangrove buffers & living breakwaters to attenuate wave energy and decrease low-lying parish vulnerability.
+      </p>
+    </div>
+
+  </div>
         </HudPanel>
       </div>
 

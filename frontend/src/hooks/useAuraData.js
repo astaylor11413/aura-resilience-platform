@@ -153,22 +153,28 @@ useEffect(() => {
     parishName.toLowerCase().includes(p.toLowerCase())
   );
 
-  // Determine vulnerability factor: surge impact is 2.5x higher in coastal lowland zones
-  const surgeImpact = isCoastalLowland ? (slrMeters * 2.5) : (slrMeters * 0.8);
-  const compositeRiskScore = (windSpeed * 0.3) + (surgeImpact * 20);
+  // 1. Calculate base surge and wind hazards
+  const surgeImpact = isCoastalLowland ? (slrMeters * 2.8) : (slrMeters * 0.5);
+  const baseRiskScore = (windSpeed * 0.25) + (surgeImpact * 22);
 
+  // 2. Apply Green Vector Mitigation Factor (0.0 to 1.0 based on 0-100% slider)
+  // High green vector coverage attenuates up to 50% of composite risk score
+  const greenMitigationFactor = 1 - ((greenVectorSlider / 100) * 0.50);
+  const mitigatedRiskScore = baseRiskScore * greenMitigationFactor;
+
+  // 3. Assign Risk Category & Map Fill Color based on mitigated score
   let calculatedRiskLevel = 'MODERATE';
-  let dynamicFillColor = '#10b981'; // Green
+  let dynamicFillColor = '#10b981'; // Green (Safe / Restored)
 
-  if (compositeRiskScore > 55 || (isCoastalLowland && slrMeters >= 1.5)) {
+  if (mitigatedRiskScore > 50) {
     calculatedRiskLevel = 'CRITICAL';
-    dynamicFillColor = '#ef4444'; // Crimson Red for low-lying surge zones
-  } else if (compositeRiskScore > 30 || surgeImpact > 1.0) {
+    dynamicFillColor = '#ef4444'; // Crimson Red
+  } else if (mitigatedRiskScore > 25) {
     calculatedRiskLevel = 'ELEVATED';
     dynamicFillColor = '#f97316'; // Orange
   } else {
     calculatedRiskLevel = 'MODERATE';
-    dynamicFillColor = '#38bdf8'; // Sky Blue / Green
+    dynamicFillColor = '#10b981'; // Emerald Green
   }
 
   return {
@@ -178,7 +184,8 @@ useEffect(() => {
       PARISH: parishName,
       risk_level: calculatedRiskLevel,
       fill_color: dynamicFillColor,
-      is_coastal_lowland: isCoastalLowland
+      is_coastal_lowland: isCoastalLowland,
+      mitigated_risk_score: mitigatedRiskScore.toFixed(1)
     }
   };
                     });
