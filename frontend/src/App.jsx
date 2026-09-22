@@ -187,19 +187,7 @@ const greenRoof3DLayer = {
   }
 };
 
-const urbanBioswaleLayer = {
-  id: 'urban-street-bioswales',
-  source: 'composite',
-  'source-layer': 'road',
-  type: 'line',
-  minzoom: 13,
-  paint: {
-    'line-color': '#34d399', // Mint green vegetation strip
-    'line-width': ['*', globalState.greenVectorSlider, 2.5], // Expands line width as slider increases
-    'line-opacity': 0.7,
-    'line-dasharray': [1, 2] // Dashed tree/bioswale corridor pattern
-  }
-};
+
 
 const routingLayer = {
   id: 'routing-layer',
@@ -352,6 +340,20 @@ export default function App() {
   paint: {
     'fill-color': '#06b6d4', // Cyan highlight glow on hover
     'fill-opacity': 0.35
+  }
+};
+
+const urbanBioswaleLayer = {
+  id: 'urban-street-bioswales',
+  source: 'composite',
+  'source-layer': 'road',
+  type: 'line',
+  minzoom: 13,
+  paint: {
+    'line-color': '#34d399', // Mint green vegetation strip
+    'line-width': ['*', globalState.greenVectorSlider, 2.5], // Expands line width as slider increases
+    'line-opacity': 0.7,
+    'line-dasharray': [1, 2] // Dashed tree/bioswale corridor pattern
   }
 };
 
