@@ -227,6 +227,10 @@ export default function App() {
   const [currentAlert, setCurrentAlert] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [citizenReports, setCitizenReports] = useState([]);
+  const [cursor, setCursor] = useState('auto');
+
+  const onMouseEnter = useCallback(() => setCursor('pointer'), []);
+  const onMouseLeave = useCallback(() => setCursor('auto'), []);
   
 
   const mapRef = useRef(null);
@@ -686,6 +690,36 @@ export default function App() {
           mapStyle="mapbox://styles/mapbox/dark-v11"
           interactiveLayerIds={globalState.isPredictiveMode ? ['parish-risk-fill'] : []}
           style={{ width: '100%', height: '100%' }}
+          cursor={cursor}
+  onMouseEnter={onMouseEnter}
+  onMouseLeave={onMouseLeave}
+  onClick={(e) => {
+    if (e.features && e.features.length > 0) {
+      const clickedFeature = e.features[0];
+      const props = clickedFeature.properties || {};
+      
+      // Match key across shapeName (fallback GeoJSON), PARISH, or name
+      const parishName = props.PARISH || props.shapeName || props.name || "Territory";
+      
+      setters.setSelectedParish(parishName);
+
+      // Extract center coordinates
+      const geom = clickedFeature.geometry;
+      let centerLngLat = [-76.792, 17.971]; // Default center
+
+      if (geom?.type === 'Polygon' && geom.coordinates?.[0]?.[0]) {
+        centerLngLat = geom.coordinates[0][0];
+      } else if (geom?.type === 'MultiPolygon' && geom.coordinates?.[0]?.[0]?.[0]) {
+        centerLngLat = geom.coordinates[0][0][0];
+      }
+
+      mapRef.current?.flyTo({
+        center: centerLngLat,
+        zoom: 11,
+        duration: 1500
+      });
+    }
+  }}
         >
           {/* 1. Storm Surge Inundation Polygons */}
           <Source id="inundation-data" type="geojson" data={sanitizedInundation}>
