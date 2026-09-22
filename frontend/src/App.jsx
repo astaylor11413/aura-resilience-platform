@@ -1213,6 +1213,17 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <div className="relative inline-block text-left z-[9999]">
               <button
+                onClick={() => {
+                  triggerDataDownload(activeMarineFeatures, 'aura_marine_telemetry', 'geojson');
+                  triggerDataDownload(activeMarineFeatures, 'aura_stac_catalog', 'stac');
+                }}
+                
+                className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors flex items-center gap-1.5"
+              >
+                <span>EXPORT GIS</span>
+              </button>
+              {/**
+              <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors flex items-center gap-1.5"
               >
@@ -1225,6 +1236,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
                     <button
                       onClick={() => {
                         triggerDataDownload(activeMarineFeatures, 'aura_marine_telemetry', 'geojson');
+                        
                         setIsOpen(false);
                       }}
                       className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-emerald-400 font-mono transition-colors"
@@ -1245,7 +1257,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
                     </button>
                   </div>
                 </div>
-              )}
+              )}*/}
             </div>
             <div className="h-4 w-[1px] bg-slate-700" />
             <label className="flex items-center gap-2 cursor-pointer select-none">
