@@ -1111,41 +1111,6 @@ export default function App() {
           <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
         <HudPanel title="Aura Infrastructure Vector HUD">
           <div className="flex flex-col gap-3 text-xs text-white font-mono">
-            
-            {/* Preventative Green Vector Slider Controller */}
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-emerald-400 font-bold">
-                <span>Green Infrastructure Vector:</span>
-                <span>{globalState.greenVectorSlider.toFixed(1)}x</span>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="3.0"
-                step="0.1"
-                value={globalState.greenVectorSlider}
-                onChange={e => setters.setGreenVectorSlider(parseFloat(e.target.value))}
-                className="w-full accent-emerald-500 cursor-pointer pointer-events-auto"
-              />
-            </div>
-
-            {/* Hurricane Telemetry Control */}
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between text-amber-400">
-                <span>Storm Telemetry Wind Speed:</span>
-                <span>{globalState.windSpeed} MPH</span>
-              </div>
-              <input
-                type="range"
-                min="20"
-                max="120"
-                step="5"
-                value={globalState.windSpeed}
-                onChange={e => setters.setWindSpeed(parseInt(e.target.value))}
-                className="w-full accent-amber-500 cursor-pointer pointer-events-auto"
-              />
-            </div>
-
             <div className="flex gap-2 pt-2 border-t border-white/10 pointer-events-auto">
               <button
                 onClick={toggle3DMode}
