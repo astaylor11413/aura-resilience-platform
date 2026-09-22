@@ -25,7 +25,7 @@ export const useAuraData = () => {
     const [greenVectorSlider, setGreenVectorSlider] = useState(() => getStored('greenVectorSlider', 1.0));
     const [is3DViewActive, setIs3DViewActive] = useState(() => getStored('is3DViewActive', false));
     const [isPredictiveMode, setIsPredictiveMode] = useState(() => getStored('isPredictiveMode', false));
-    
+    const [selectedParish, setSelectedParish] = useState(null);
 
     // Data Repositories
     const [gridAssets, setGridAssets] = useState([]);
@@ -48,6 +48,16 @@ export const useAuraData = () => {
     // Environment Base URL
     const API_BASE = import.meta.env.VITE_AURA_API_BASE_URL || 'https://aura-resilience-platform-prod.onrender.com/api/v1';
 
+    // Helper to validate GeoJSON structural integrity
+    const isValidGeoJSON = (data) => {
+        return (
+            data &&
+            typeof data === 'object' &&
+            data.type === 'FeatureCollection' &&
+            Array.isArray(data.features)
+        );
+    };
+
     // Persistence Sync
     useEffect(() => {
         localStorage.setItem('aura_hurricaneIntensity', JSON.stringify(hurricaneIntensity));
@@ -57,7 +67,8 @@ export const useAuraData = () => {
         localStorage.setItem('aura_airGapped', JSON.stringify(airGapped));
         localStorage.setItem('aura_greenVectorSlider', JSON.stringify(greenVectorSlider));
         localStorage.setItem('aura_is3DViewActive', JSON.stringify(is3DViewActive));
-    }, [hurricaneIntensity, windSpeed, slrMeters, activeThreatIndex, airGapped, greenVectorSlider, is3DViewActive]);
+        localStorage.setItem('aura_isPredictiveMode', JSON.stringify(isPredictiveMode));
+    }, [hurricaneIntensity, windSpeed, slrMeters, activeThreatIndex, airGapped, greenVectorSlider, is3DViewActive, isPredictiveMode]);
 
     // 1. Grid Simulation Sync
     useEffect(() => {
@@ -107,64 +118,70 @@ export const useAuraData = () => {
         return () => controller.abort();
     }, [slrMeters, airGapped, API_BASE]);
 
-
-    /* Advanced Dynamic Green Infrastructure Vector Sync
+    // 3. Consolidated Parish Risk GeoJSON Sync (Primary API with Fallback)
     useEffect(() => {
         if (airGapped) return;
 
-        const controller = new AbortController();
-        fetch(`${API_BASE}/preventative/green-infrastructure?slider_vector=${greenVectorSlider}`, { signal: controller.signal })
-            .then(res => res.json())
-            .then(geoJson => {
-                if (geoJson?.type === 'FeatureCollection') {
-                    setGreenInfrastructureGeoJson(geoJson);
-                } else {
-                    setGreenInfrastructureGeoJson(INITIAL_GEOJSON);
+        let isMounted = true;
+
+        const fetchParishes = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/spatial/parishes?wind=${windSpeed}&green=${greenVectorSlider}`);
+                if (!response.ok) throw new Error(`API fetch failed: ${response.status}`);
+                
+                const data = await response.json();
+                if (isMounted) setParishGeoJson(isValidGeoJSON(data) ? data : INITIAL_GEOJSON);
+            } catch (error) {
+                console.warn("Primary API failed, attempting fallback to local GeoJSON:", error);
+                try {
+                    const fallbackResponse = await fetch('/data/jamaica_parishes.geojson');
+                    if (!fallbackResponse.ok) throw new Error(`Fallback status: ${fallbackResponse.status}`);
+                    
+                    const fallbackData = await fallbackResponse.json();
+                    if (isMounted) setParishGeoJson(isValidGeoJSON(fallbackData) ? fallbackData : INITIAL_GEOJSON);
+                } catch (fallbackError) {
+                    console.error("Critical: Failed to load parish GeoJSON from API and local fallback.", fallbackError);
                 }
-            })
-            .catch(err => {
-                if (err.name !== 'AbortError') {
-                    console.error("Green infrastructure fetch error:", err);
-                    setGreenInfrastructureGeoJson(INITIAL_GEOJSON);
-                }
-            });
+            }
+        };
 
-        return () => controller.abort();
-    }, [greenVectorSlider, airGapped, API_BASE]);*/
+        fetchParishes();
 
-    // Fetch Predictive Mode control data for HUD Panel switch
-    useEffect(() => {
-        localStorage.setItem('aura_isPredictiveMode', JSON.stringify(isPredictiveMode));
-    }, [isPredictiveMode]);
-
-    // Fetch Parish Risk GeoJSON (Orange/Red Highlight Engine)
-    useEffect(() => {
-        if (airGapped) return;
-        fetch(`${API_BASE}/spatial/parishes?wind_speed_mph=${windSpeed}&slider_vector=${greenVectorSlider}`)
-            .then(res => res.json())
-            .then(data => setParishGeoJson(data || INITIAL_GEOJSON))
-            .catch(() => setParishGeoJson(INITIAL_GEOJSON));
+        return () => { isMounted = false; };
     }, [windSpeed, greenVectorSlider, airGapped, API_BASE]);
 
-    // Fetch Dynamic Green Infrastructure Vector GeoJSON
+    // Debugging verification for Parish GeoJSON hydration
+    useEffect(() => {
+        if (parishGeoJson) {
+            if (typeof parishGeoJson === 'string') {
+                console.error('State Error: parishGeoJson hydrated as a string URL instead of a GeoJSON object!');
+            } else if (parishGeoJson.type === 'FeatureCollection') {
+                console.log('Success: parishGeoJson hydrated with', parishGeoJson.features.length, 'features.');
+            }
+        }
+    }, [parishGeoJson]);
+
+    // 4. Dynamic Green Infrastructure Vector GeoJSON Sync
     useEffect(() => {
         if (airGapped) return;
+
         fetch(`${API_BASE}/preventative/green-infrastructure?slider_vector=${greenVectorSlider}`)
             .then(res => res.json())
-            .then(data => setGreenInfrastructureGeoJson(data || INITIAL_GEOJSON))
+            .then(data => setGreenInfrastructureGeoJson(isValidGeoJSON(data) ? data : INITIAL_GEOJSON))
             .catch(() => setGreenInfrastructureGeoJson(INITIAL_GEOJSON));
     }, [greenVectorSlider, airGapped, API_BASE]);
 
-    // Fetch Dynamic ROI & Avoided Loss Analytics
+    // 5. Dynamic ROI & Avoided Loss Analytics Sync
     useEffect(() => {
         if (airGapped) return;
+
         fetch(`${API_BASE}/analytics/roi-calculator?slider_vector=${greenVectorSlider}&wind_speed_mph=${windSpeed}`)
             .then(res => res.json())
             .then(data => setRoiMetrics(data))
             .catch(() => {});
     }, [greenVectorSlider, windSpeed, airGapped, API_BASE]);
 
-    // 3. Static Oceanographic & Logistics Sync
+    // 6. Static Oceanographic & Logistics Sync
     useEffect(() => {
         if (airGapped) return;
 
@@ -206,8 +223,6 @@ export const useAuraData = () => {
         })).filter(f => f.geometry?.coordinates)
     };
 
-    // --- NORMALIZED MARINE GEOJSON ---
-    // Safely maps flat OR nested property keys so App.jsx always reads real values
     const compiledMarineGeoJson = {
         type: "FeatureCollection",
         features: (marineAnomalies || []).map(feature => {
@@ -250,7 +265,8 @@ export const useAuraData = () => {
             greenVectorSlider,
             is3DViewActive,
             roiMetrics,
-            isPredictiveMode
+            isPredictiveMode,
+            selectedParish
         },
         setters: {
             setWindSpeed,
@@ -264,7 +280,8 @@ export const useAuraData = () => {
             setGreenVectorSlider,
             setIs3DViewActive,
             setRoiMetrics,
-            setIsPredictiveMode
+            setIsPredictiveMode,
+            setSelectedParish
         },
         data: {
             gridAssets,

@@ -92,6 +92,11 @@ const inundationLayer = {
   }
 };
 
+const fallbackEmptyGeoJSON = {
+  type: 'FeatureCollection',
+  features: []
+};
+
 // Parish Risk Highlighting Layer (Orange/Red Dynamic Render)
 const parishRiskFillLayer = {
   id: 'parish-risk-fill',
@@ -832,7 +837,9 @@ export default function App() {
         {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
       {globalState.isPredictiveMode && (
   <Source id="parish-risk-data" type="geojson" data={
-          geoJson?.parishGeoJson?.features?.length? geoJson.parishGeoJson: "/data/jamaica_parishes.geojson"
+          geoJson?.parishGeoJson && geoJson.parishGeoJson.features?.length 
+          ? geoJson.parishGeoJson 
+            : fallbackEmptyGeoJSON
   }>
     <Layer 
       {...parishRiskFillLayer} 
