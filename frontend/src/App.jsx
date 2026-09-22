@@ -212,6 +212,57 @@ const getLogisticsBlurb = (facilityName, urgency) => {
   };
 };
 
+// Helper function to generate procedural green vegetation polygons around selected parish coordinates
+const generateGreenInfrastructureFeatures = (centerCoords, greenMultiplier) => {
+  if (!centerCoords || centerCoords.length < 2) return [];
+  const [lng, lat] = centerCoords;
+  
+  // Scale polygon count based on the green vector slider value (e.g. 0.5x to 3.0x)
+  const count = Math.floor(greenMultiplier * 18);
+  const features = [];
+
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * 2 * Math.PI;
+    const distance = 0.003 + (i * 0.0008); // Scatter within ~500m-1km radius
+    const pLng = lng + Math.cos(angle) * distance;
+    const pLat = lat + Math.sin(angle) * distance;
+    const size = 0.0006 + (greenMultiplier * 0.0002);
+
+    features.push({
+      type: 'Feature',
+      properties: {
+        id: `green-asset-${i}`,
+        height: 6 + (i % 4) * 3, // Procedural vegetation height for 3D extrusion
+        type: 'Mangrove / Bioswale Buffer'
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [pLng - size, pLat - size],
+          [pLng + size, pLat - size],
+          [pLng + size, pLat + size],
+          [pLng - size, pLat + size],
+          [pLng - size, pLat - size]
+        ]]
+      }
+    });
+  }
+
+  return features;
+};
+
+// Add dynamic 3D green vegetation extrusion layer definition
+const green3DExtrusionLayer = {
+  id: '3d-green-vegetation-extrusion',
+  type: 'fill-extrusion',
+  paint: {
+    'fill-extrusion-color': '#10b981', // Vibrant emerald green
+    'fill-extrusion-height': ['get', 'height'],
+    'fill-extrusion-base': 0,
+    'fill-extrusion-opacity': 0.85
+  }
+};
+
 export default function App() {
   // Global context destructuring
   const { state: globalState, setters, data, geoJson } = useAuraData();
@@ -679,6 +730,32 @@ export default function App() {
     };
   }, [globalState.airGapped, activeInundation]);
 
+  // Compute active parish center coordinate for procedural green geometry placement
+const activeParishCenter = useMemo(() => {
+  if (!globalState.selectedParish || !geoJson?.parishGeoJson?.features) {
+    return [-76.792, 17.971]; // Default Kingston base
+  }
+  const feature = geoJson.parishGeoJson.features.find(f => {
+    const name = f.properties?.PARISH || f.properties?.shapeName || f.properties?.name;
+    return name && name.toLowerCase() === globalState.selectedParish.toLowerCase();
+  });
+
+  if (feature?.geometry) {
+    const geom = feature.geometry;
+    if (geom.type === 'Polygon' && geom.coordinates?.[0]?.[0]) return geom.coordinates[0][0];
+    if (geom.type === 'MultiPolygon' && geom.coordinates?.[0]?.[0]?.[0]) return geom.coordinates[0][0][0];
+  }
+  return [-76.792, 17.971];
+}, [globalState.selectedParish, geoJson?.parishGeoJson]);
+
+// Generate procedural 3D green vegetation GeoJSON dynamic collection
+const dynamicGreenGeoJson = useMemo(() => {
+  return {
+    type: 'FeatureCollection',
+    features: generateGreenInfrastructureFeatures(activeParishCenter, globalState.greenVectorSlider)
+  };
+}, [activeParishCenter, globalState.greenVectorSlider]);
+
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
 
@@ -722,14 +799,12 @@ export default function App() {
     if (globalState.isPredictiveMode && e.features && e.features.length > 0) {
       const clickedFeature = e.features[0];
       const props = clickedFeature.properties || {};
-      
-      // Normalized name matching across schema variants
       const parishName = props.PARISH || props.shapeName || props.name || "Territory";
       
-      // Set active parish in global context to compute ROI engine stats
+      // Store active parish selection in global context
       setters.setSelectedParish(parishName);
 
-      // Center map on clicked parish geometry
+      // Extract precise parish center coordinates
       const geom = clickedFeature.geometry;
       let centerLngLat = [-76.792, 17.971];
 
@@ -739,11 +814,15 @@ export default function App() {
         centerLngLat = geom.coordinates[0][0][0];
       }
 
+      // Automatically trigger 3D City View mode and fly camera into 3D perspective
+      setters.setIs3DViewActive(true);
+      
       mapRef.current?.flyTo({
         center: centerLngLat,
-        zoom: 11,
-        pitch: 45,
-        duration: 1500
+        zoom: 15.2,
+        pitch: 62,
+        bearing: -18,
+        duration: 2000
       });
     }
   }}
@@ -894,6 +973,13 @@ export default function App() {
          
         {/* 3D City View Building Extrusions */}
         {globalState.is3DViewActive && <Layer {...building3DLayer} />}
+
+        {/* Dynamic Procedural 3D Green Vegetation Extrusions */}
+        {globalState.isPredictiveMode && globalState.is3DViewActive && (
+          <Source id="procedural-green-data" type="geojson" data={dynamicGreenGeoJson}>
+            <Layer {...green3DExtrusionLayer} />
+          </Source>
+        )}
 
         {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
       {globalState.isPredictiveMode && (
@@ -1097,7 +1183,7 @@ export default function App() {
                 onChange={e => setters.setIsPredictiveMode(e.target.checked)}
                 className="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-0 focus:ring-offset-0 accent-emerald-500 cursor-pointer"
               />
-              <span>Predictive Planning Mode</span>
+              <span>Green Planner</span>
             </label>
           </div>
         </header>

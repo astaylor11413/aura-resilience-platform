@@ -159,8 +159,8 @@ useEffect(() => {
 
   // 2. Apply Green Vector Mitigation Factor (0.0 to 1.0 based on 0-100% slider)
   // High green vector coverage attenuates up to 50% of composite risk score
-  const greenMitigationFactor = 1 - ((greenVectorSlider / 100) * 0.50);
-  const mitigatedRiskScore = baseRiskScore * greenMitigationFactor;
+const greenMitigationDiscount = 1 - Math.min(0.60, ((greenVectorSlider - 0.5) / 2.5) * 0.60);
+const mitigatedRiskScore = baseRiskScore * greenMitigationDiscount ;
 
   // 3. Assign Risk Category & Map Fill Color based on mitigated score
   let calculatedRiskLevel = 'MODERATE';
