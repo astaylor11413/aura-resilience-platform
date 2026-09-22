@@ -117,53 +117,79 @@ export const useAuraData = () => {
 
         return () => controller.abort();
     }, [slrMeters, airGapped, API_BASE]);
+// fetch parishes suppoort with fall back for failed endpoint case
+useEffect(() => {
+    if (airGapped) return;
 
-    // 3. Consolidated Parish Risk GeoJSON Sync (Primary API with Fallback)
-    useEffect(() => {
-        if (airGapped) return;
+    let isMounted = true;
 
-        let isMounted = true;
-
-        const fetchParishes = async () => {
+    const fetchParishes = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/spatial/parishes?wind=${windSpeed}&green=${greenVectorSlider}`);
+            if (!response.ok) throw new Error(`API fetch failed: ${response.status}`);
+            
+            const data = await response.json();
+            if (isMounted) setParishGeoJson(isValidGeoJSON(data) ? data : INITIAL_GEOJSON);
+        } catch (error) {
+            console.warn("Primary API failed, attempting fallback to local GeoJSON:", error);
             try {
-                const response = await fetch(`${API_BASE}/spatial/parishes?wind=${windSpeed}&green=${greenVectorSlider}`);
-                if (!response.ok) throw new Error(`API fetch failed: ${response.status}`);
+                const fallbackResponse = await fetch('/data/jamaica_parishes.geojson');
+                if (!fallbackResponse.ok) throw new Error(`Fallback status: ${fallbackResponse.status}`);
                 
-                const data = await response.json();
-                if (isMounted) setParishGeoJson(isValidGeoJSON(data) ? data : INITIAL_GEOJSON);
-            } catch (error) {
-                console.warn("Primary API failed, attempting fallback to local GeoJSON:", error);
-                try {
-                    const fallbackResponse = await fetch('/data/jamaica_parishes.geojson');
-                    if (!fallbackResponse.ok) throw new Error(`Fallback status: ${fallbackResponse.status}`);
-                    
-                    const fallbackData = await fallbackResponse.json();
-        if (isMounted && isValidGeoJSON(fallbackData)) {
-            // Normalize fallback properties to align with backend API expectations
-            const normalizedFeatures = fallbackData.features.map(feature => ({
-                ...feature,
-                properties: {
-                    ...feature.properties,
-                    PARISH: feature.properties.shapeName || feature.properties.name || "Unknown Parish",
-                    risk_level: feature.properties.risk_level || "MODERATE"
-                }
-            }));
+                const fallbackData = await fallbackResponse.json();
+                if (isMounted && isValidGeoJSON(fallbackData)) {
+                    // Normalize properties so PARISH and risk_level are guaranteed
+                    const normalizedFeatures = fallbackData.features.map(feature => ({
+                        ...feature,
+                        properties: {
+                            ...feature.properties,
+                            PARISH: feature.properties.PARISH || feature.properties.shapeName || feature.properties.name || "Territory",
+                            risk_level: feature.properties.risk_level || (windSpeed > 70 ? 'CRITICAL' : windSpeed > 40 ? 'ELEVATED' : 'MODERATE')
+                        }
+                    }));
 
-            setParishGeoJson({
-                ...fallbackData,
-                features: normalizedFeatures
-            });
-        }
-                } catch (fallbackError) {
-                    console.error("Critical: Failed to load parish GeoJSON from API and local fallback.", fallbackError);
+                    setParishGeoJson({
+                        ...fallbackData,
+                        features: normalizedFeatures
+                    });
                 }
+            } catch (fallbackError) {
+                console.error("Critical: Failed to load parish GeoJSON from API and local fallback.", fallbackError);
             }
-        };
+        }
+    };
 
-        fetchParishes();
+    fetchParishes();
 
-        return () => { isMounted = false; };
-    }, [windSpeed, greenVectorSlider, airGapped, API_BASE]);
+    return () => { isMounted = false; };
+}, [windSpeed, greenVectorSlider, airGapped, API_BASE]);
+
+// 2. fallback for ROI Analytics Sync in useAuraData.js
+useEffect(() => {
+    if (airGapped) return;
+
+    fetch(`${API_BASE}/analytics/roi-calculator?slider_vector=${greenVectorSlider}&wind_speed_mph=${windSpeed}`)
+        .then(res => {
+            if (!res.ok) throw new Error("ROI endpoint offline");
+            return res.json();
+        })
+        .then(data => setRoiMetrics(data))
+        .catch(() => {
+            // Local fallback calculation when backend returns 404
+            const baseCapEx = 12500000;
+            const capex = baseCapEx * greenVectorSlider;
+            const avoidedLoss = capex * (1.8 + (windSpeed / 100));
+            const attenuation = Math.min(85, 25 * greenVectorSlider);
+
+            setRoiMetrics({
+                green_infrastructure_capex_usd: capex,
+                avoided_loss_usd: avoidedLoss,
+                net_economic_savings_usd: avoidedLoss - capex,
+                roi_percentage: ((avoidedLoss - capex) / capex) * 100,
+                attenuation_effectiveness_pct: attenuation
+            });
+        });
+}, [greenVectorSlider, windSpeed, airGapped, API_BASE]);
 
     // Debugging verification for Parish GeoJSON hydration
     useEffect(() => {
@@ -176,7 +202,7 @@ export const useAuraData = () => {
         }
     }, [parishGeoJson]);
 
-    // 4. Dynamic Green Infrastructure Vector GeoJSON Sync
+    //  Dynamic Green Infrastructure Vector GeoJSON Sync
     useEffect(() => {
         if (airGapped) return;
 
