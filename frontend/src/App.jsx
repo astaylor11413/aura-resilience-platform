@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Map, { Source, Layer, Marker } from 'react-map-gl';
 import { Home, ShieldAlert, Box, DollarSign, TrendingUp } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
