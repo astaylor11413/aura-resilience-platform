@@ -228,9 +228,10 @@ export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [citizenReports, setCitizenReports] = useState([]);
   const [cursor, setCursor] = useState('auto');
-
   const onMouseEnter = useCallback(() => setCursor('pointer'), []);
   const onMouseLeave = useCallback(() => setCursor('auto'), []);
+  //hover state tracking inside App component
+  const [hoveredParishName, setHoveredParishName] = useState(null);
   
 
   const mapRef = useRef(null);
@@ -253,6 +254,15 @@ export default function App() {
       });
     }
   };
+
+  const parishHoverLayer = {
+  id: 'parish-hover-highlight',
+  type: 'fill',
+  paint: {
+    'fill-color': '#06b6d4', // Cyan highlight glow on hover
+    'fill-opacity': 0.35
+  }
+};
 
   // Clean up timers on component unmount
   useEffect(() => {
@@ -691,21 +701,37 @@ export default function App() {
           interactiveLayerIds={globalState.isPredictiveMode ? ['parish-risk-fill'] : []}
           style={{ width: '100%', height: '100%' }}
           cursor={cursor}
-  onMouseEnter={onMouseEnter}
-  onMouseLeave={onMouseLeave}
+  onMouseMove={(e) => {
+    if (globalState.isPredictiveMode && e.features && e.features.length > 0) {
+      const feature = e.features[0];
+      const name = feature.properties?.PARISH || feature.properties?.shapeName || feature.properties?.name;
+      if (name) {
+        setHoveredParishName(name);
+        setCursor('pointer');
+      }
+    } else {
+      setHoveredParishName(null);
+      setCursor('auto');
+    }
+  }}
+  onMouseLeave={() => {
+    setHoveredParishName(null);
+    setCursor('auto');
+  }}
   onClick={(e) => {
-    if (e.features && e.features.length > 0) {
+    if (globalState.isPredictiveMode && e.features && e.features.length > 0) {
       const clickedFeature = e.features[0];
       const props = clickedFeature.properties || {};
       
-      // Match key across shapeName (fallback GeoJSON), PARISH, or name
+      // Normalized name matching across schema variants
       const parishName = props.PARISH || props.shapeName || props.name || "Territory";
       
+      // Set active parish in global context to compute ROI engine stats
       setters.setSelectedParish(parishName);
 
-      // Extract center coordinates
+      // Center map on clicked parish geometry
       const geom = clickedFeature.geometry;
-      let centerLngLat = [-76.792, 17.971]; // Default center
+      let centerLngLat = [-76.792, 17.971];
 
       if (geom?.type === 'Polygon' && geom.coordinates?.[0]?.[0]) {
         centerLngLat = geom.coordinates[0][0];
@@ -716,6 +742,7 @@ export default function App() {
       mapRef.current?.flyTo({
         center: centerLngLat,
         zoom: 11,
+        pitch: 45,
         duration: 1500
       });
     }
@@ -918,6 +945,17 @@ export default function App() {
         }
       }}
     />
+    {/* Dynamic Hover Outline/Fill Layer */}
+      {hoveredParishName && (
+        <Layer 
+          {...parishHoverLayer} 
+          filter={['any',
+            ['==', ['get', 'PARISH'], hoveredParishName],
+            ['==', ['get', 'shapeName'], hoveredParishName],
+            ['==', ['get', 'name'], hoveredParishName]
+          ]} 
+        />
+      )}
     <Layer {...parishRiskLineLayer}/>
   </Source>
 )}
