@@ -1245,8 +1245,8 @@ export default function App() {
             <div className="space-y-1 pt-2">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Sea Level Surge</span><span className="text-emerald-400">+{globalState.slrMeters}m</span></div>
               <input type="range" min="0" max="3" step="0.5" value={globalState.slrMeters} onChange={(e) => setters.setSlrMeters(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
-            </div>            
             </div>
+            
             {globalState.activeThreatIndex !== null && (
               <button
                 onClick={() => setters.setActiveThreatIndex(null)}
