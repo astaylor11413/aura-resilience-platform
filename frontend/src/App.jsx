@@ -1220,7 +1220,8 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
               </button>
 
               {isOpen && (
-                    <div className="absolute right-0 sm:left-0 top-full mt-2 w-56 max-w-[85vw] max-h-[60vh] overflow-y-auto z-[9999] bg-slate-900 border border-cyan-500/30 rounded-md shadow-xl">                    <button
+                <div className="absolute right-0 sm:left-0 top-full mt-2 w-56 max-w-[85vw] max-h-[60vh] overflow-y-auto z-[9999] bg-slate-900 border border-cyan-500/30 rounded-md shadow-xl">                    <div className="py-1">
+                    <button
                       onClick={() => {
                         triggerDataDownload(activeMarineFeatures, 'aura_marine_telemetry', 'geojson');
                         setIsOpen(false);
