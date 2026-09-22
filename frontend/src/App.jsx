@@ -489,7 +489,7 @@ const urbanBioswaleLayer = {
       { step: 11, alert: "Triage Complete. Crisis footprint successfully compiled. Triggering localized AI transcription." }
     ];
 
-    tickerRef.current = setInterval(async () => {
+    tickerRef.current = setInterval(() => {
       setCurrentTimeStep(prevStep => {
         const nextStep = prevStep + 1;
 
@@ -590,9 +590,7 @@ const urbanBioswaleLayer = {
         return nextStep;
       });
     }, 2000);
-      
-  
-
+  }
   const handleProcessTransmission = async () => {
   if (!reportText.trim()) return;
   setIsProcessing(true);
