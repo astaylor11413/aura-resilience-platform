@@ -1210,7 +1210,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
               </h1>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
-            <div className="relative inline-block text-left">
+            <div className="relative inline-block text-left z-[9999]">
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors flex items-center gap-1.5"
@@ -1220,8 +1220,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
               </button>
 
               {isOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded shadow-xl z-50">
-                  <div className="py-1">
+                  <div className="absolute right-0 sm:left-0 mt-2 w-56 max-w-[90vw] z-[9999] rounded-md shadow-lg bg-gray-900 border border-cyan-500/30 overflow-hidden">                  <div className="py-1">
                     <button
                       onClick={() => {
                         triggerDataDownload(activeMarineFeatures, 'aura_marine_telemetry', 'geojson');
@@ -1359,7 +1358,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
 
           {/* Right Panel: Dynamic ROI & Avoided-Loss Calculation Engine */}
           <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-<HudPanel title={globalState.selectedParish ? `ROI Engine — ${globalState.selectedParish}` : "Select a Parish to Simulate"}>
+<HudPanel title={globalState.selectedParish ? `ROI Engine — ${globalState.selectedParish}` : "Select a Parish to Simulate"} className="overflow-visible z-[100]">
   {globalState.selectedParish ? (
     <div className="flex flex-col gap-2.5 text-xs text-white font-mono">
       <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
@@ -1430,7 +1429,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
           {/* Dynamic Switch Panel Layout */}
           {!showImpactAnalysis ? (
             <>
-              <HudPanel title="Storm Tracker">
+              <HudPanel title="Storm Tracker" className="overflow-visible z-[100]">
                 <div className="text-[10px] text-slate-300 space-y-2">
                   <p>No storm activity at this time.</p>            
                 </div>
@@ -1455,7 +1454,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
             />
             </>
           )}
-          <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer}>
+          <HudPanel title="Logistics & Mutual Aid" onToggle={setShowRoutingLayer} className="overflow-visible z-[100]">
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
                 {(activeRoutingGeoJson.features || []).map((route, i) => {
                   const originKitchen = route.properties?.origin_kitchen || 'Unknown Kitchen';
@@ -1486,7 +1485,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
 
         {/* RIGHT INTERACTIVE COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-          <HudPanel title="JPS Grid Status">
+          <HudPanel title="JPS Grid Status" className="overflow-visible z-[100]">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {processedSubstationFeatures.map(feat => {
                 const props = feat.properties || {};
@@ -1514,7 +1513,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
               })}
             </div>
           </HudPanel>
-          <HudPanel title="Environmental Vectors">
+          <HudPanel title="Environmental Vectors" className="overflow-visible z-[100]">
             <div className="space-y-1">
               <div className="flex justify-between text-[10px] text-slate-400 font-mono"><span>Wind Field</span><span className="text-emerald-400">{globalState.windSpeed} MPH</span></div>
               <input type="range" min="10" max="100" value={globalState.windSpeed} onChange={(e) => setters.setWindSpeed(Number(e.target.value))} className="w-full accent-emerald-400 cursor-pointer" />
@@ -1534,7 +1533,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
             )}
           </HudPanel>
 
-          <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer}>
+          <HudPanel title="Oceanographic Watchdog" onToggle={setShowMarineLayer} className="overflow-visible z-[100]">
             <div className="max-h-56 overflow-y-auto pr-2 space-y-2">
               {activeMarineFeatures.map((m, i) => {
                 const locName = m.properties?.location_name || 'Anomalous Region';
@@ -1592,7 +1591,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
 
         {/* VOICE TRANSCRIPTION TRANSCRIBER PANEL */}
         <div className="col-span-1 md:col-span-12 z-[60] pointer-events-auto mt-auto">
-          <HudPanel title="Logistics Transcriber">
+          <HudPanel title="Logistics Transcriber" className="overflow-visible z-[100]">
             <div className="flex gap-2 items-center">
   <label className="cursor-pointer bg-slate-900 hover:bg-slate-800 border border-white/10 p-2.5 rounded-lg text-slate-400 hover:text-white transition-colors" title="Attach Proof Photo/Video">
     <input type="file" accept="image/*,video/*" className="hidden" onChange={(e) => {
