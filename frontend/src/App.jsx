@@ -161,6 +161,32 @@ const building3DLayer = {
   }
 };
 
+const greenRoof3DLayer = {
+  id: '3d-green-roofs',
+  source: 'composite',
+  'source-layer': 'building',
+  type: 'fill-extrusion',
+  minzoom: 12,
+  filter: ['==', 'extrude', 'true'], // Matches real Mapbox building features
+  paint: {
+    'fill-extrusion-color': '#10b981', // Emerald green plant roof
+    // Place green roof 0.5m above building height
+    'fill-extrusion-height': [
+      '+',
+      ['coalesce', ['get', 'height'], ['*', ['get', 'building:levels'], 3.5], 8],
+      0.5
+    ],
+    // Base sits right on top of the original roof
+    'fill-extrusion-base': [
+      'coalesce',
+      ['get', 'height'],
+      ['*', ['get', 'building:levels'], 3.5],
+      8
+    ],
+    'fill-extrusion-opacity': 0.95
+  }
+};
+
 const routingLayer = {
   id: 'routing-layer',
   type: 'line',
@@ -974,12 +1000,26 @@ const dynamicGreenGeoJson = useMemo(() => {
         {/* 3D City View Building Extrusions */}
         {globalState.is3DViewActive && <Layer {...building3DLayer} />}
 
-        {/* Dynamic Procedural 3D Green Vegetation Extrusions */}
+        {/* Dynamic Procedural 3D Green Vegetation Extrusions 
         {globalState.isPredictiveMode && globalState.is3DViewActive && (
           <Source id="procedural-green-data" type="geojson" data={dynamicGreenGeoJson}>
             <Layer {...green3DExtrusionLayer} />
           </Source>
         )}
+        */}
+
+        {/* Render 3D Green Roofs on top of existing Mapbox buildings */}
+{globalState.isPredictiveMode && globalState.is3DViewActive && (
+  <Layer 
+    {...greenRoof3DLayer}
+    filter={[
+      'all',
+      ['==', 'extrude', 'true'],
+      // Deterministically pick a percentage of buildings based on feature ID / slider value
+      ['<=', ['%', ['coalesce', ['id'], 0], 100], globalState.greenVectorSlider * 35]
+    ]}
+  />
+)}
 
         {/* Parish Risk Vector Highlighting (Orange/Red Dynamic Render) */}
       {globalState.isPredictiveMode && (
