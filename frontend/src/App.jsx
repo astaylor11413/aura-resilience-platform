@@ -1167,12 +1167,22 @@ export default function App() {
 
           {/* Right Panel: Dynamic ROI & Avoided-Loss Calculation Engine */}
           <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-        <HudPanel title={globalState.selectedParish ? `ROI Engine — ${globalState.selectedParish}` : "Select a Parish to Simulate"}>
+<HudPanel title={globalState.selectedParish ? `ROI Engine — ${globalState.selectedParish}` : "Select a Parish to Simulate"}>
   {globalState.selectedParish ? (
     <div className="flex flex-col gap-2.5 text-xs text-white font-mono">
       <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
         <span className="text-slate-400">Target Community:</span>
         <span className="font-bold text-emerald-400">{globalState.selectedParish}</span>
+      </div>
+
+      {/* Coastal Surge Elevation Tag */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <span className="text-slate-400">Coastal Surge Exposure:</span>
+        <span className={`font-bold ${
+          globalState.slrMeters > 1.5 ? 'text-rose-400' : 'text-amber-400'
+        }`}>
+          +{globalState.slrMeters}m Surge Impact
+        </span>
       </div>
 
       <div className="flex items-center justify-between border-b border-white/10 pb-1.5">

@@ -139,14 +139,49 @@ useEffect(() => {
                 const fallbackData = await fallbackResponse.json();
                 if (isMounted && isValidGeoJSON(fallbackData)) {
                     // Normalize properties so PARISH and risk_level are guaranteed
-                    const normalizedFeatures = fallbackData.features.map(feature => ({
-                        ...feature,
-                        properties: {
-                            ...feature.properties,
-                            PARISH: feature.properties.PARISH || feature.properties.shapeName || feature.properties.name || "Territory",
-                            risk_level: feature.properties.risk_level || (windSpeed > 70 ? 'CRITICAL' : windSpeed > 40 ? 'ELEVATED' : 'MODERATE')
-                        }
-                    }));
+                    const LOW_LYING_COASTAL_PARISHES = [
+                        'Kingston', 
+                        'Saint Andrew', 
+                        'Saint Catherine', 
+                        'Clarendon', 
+                        'Manchester', 
+                        'Saint Thomas'
+                    ];
+                    const normalizedFeatures = fallbackData.features.map(feature => {
+                        const parishName = feature.properties.PARISH || feature.properties.shapeName || feature.properties.name || "Territory";
+  const isCoastalLowland = LOW_LYING_COASTAL_PARISHES.some(p => 
+    parishName.toLowerCase().includes(p.toLowerCase())
+  );
+
+  // Determine vulnerability factor: surge impact is 2.5x higher in coastal lowland zones
+  const surgeImpact = isCoastalLowland ? (slrMeters * 2.5) : (slrMeters * 0.8);
+  const compositeRiskScore = (windSpeed * 0.3) + (surgeImpact * 20);
+
+  let calculatedRiskLevel = 'MODERATE';
+  let dynamicFillColor = '#10b981'; // Green
+
+  if (compositeRiskScore > 55 || (isCoastalLowland && slrMeters >= 1.5)) {
+    calculatedRiskLevel = 'CRITICAL';
+    dynamicFillColor = '#ef4444'; // Crimson Red for low-lying surge zones
+  } else if (compositeRiskScore > 30 || surgeImpact > 1.0) {
+    calculatedRiskLevel = 'ELEVATED';
+    dynamicFillColor = '#f97316'; // Orange
+  } else {
+    calculatedRiskLevel = 'MODERATE';
+    dynamicFillColor = '#38bdf8'; // Sky Blue / Green
+  }
+
+  return {
+    ...feature,
+    properties: {
+      ...feature.properties,
+      PARISH: parishName,
+      risk_level: calculatedRiskLevel,
+      fill_color: dynamicFillColor,
+      is_coastal_lowland: isCoastalLowland
+    }
+  };
+                    });
 
                     setParishGeoJson({
                         ...fallbackData,
@@ -162,7 +197,7 @@ useEffect(() => {
     fetchParishes();
 
     return () => { isMounted = false; };
-}, [windSpeed, greenVectorSlider, airGapped, API_BASE]);
+}, [windSpeed, slrMeters, greenVectorSlider, airGapped, API_BASE]);
 
 // 2. fallback for ROI Analytics Sync in useAuraData.js
 useEffect(() => {
