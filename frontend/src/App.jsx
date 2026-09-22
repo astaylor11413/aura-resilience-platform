@@ -1486,7 +1486,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
 
         {/* RIGHT INTERACTIVE COLUMN */}
         <div className="col-span-1 md:col-span-3 flex flex-col gap-4 pointer-events-auto overflow-y-auto">
-          <HudPanel title="JPS Grid Status" className="overflow-visible z-[100]">
+          <HudPanel title="JPS Grid Status">
             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
               {processedSubstationFeatures.map(feat => {
                 const props = feat.properties || {};
