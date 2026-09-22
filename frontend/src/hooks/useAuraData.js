@@ -138,7 +138,22 @@ export const useAuraData = () => {
                     if (!fallbackResponse.ok) throw new Error(`Fallback status: ${fallbackResponse.status}`);
                     
                     const fallbackData = await fallbackResponse.json();
-                    if (isMounted) setParishGeoJson(isValidGeoJSON(fallbackData) ? fallbackData : INITIAL_GEOJSON);
+        if (isMounted && isValidGeoJSON(fallbackData)) {
+            // Normalize fallback properties to align with backend API expectations
+            const normalizedFeatures = fallbackData.features.map(feature => ({
+                ...feature,
+                properties: {
+                    ...feature.properties,
+                    PARISH: feature.properties.shapeName || feature.properties.name || "Unknown Parish",
+                    risk_level: feature.properties.risk_level || "MODERATE"
+                }
+            }));
+
+            setParishGeoJson({
+                ...fallbackData,
+                features: normalizedFeatures
+            });
+        }
                 } catch (fallbackError) {
                     console.error("Critical: Failed to load parish GeoJSON from API and local fallback.", fallbackError);
                 }

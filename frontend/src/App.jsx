@@ -852,7 +852,10 @@ export default function App() {
       onClick={(e) => {
         if (e.features && e.features.length > 0) {
           const clickedFeature = e.features[0];
-          const parishName = clickedFeature.properties?.PARISH || clickedFeature.properties?.name || "Territory";
+          const parishName = clickedFeature.properties?.PARISH || 
+                             clickedFeature.properties?.shapeName ||
+                             clickedFeature.properties?.name || 
+                             "Territory";
           
           // Set active parish in global state
           setters.setSelectedParish(parishName);
