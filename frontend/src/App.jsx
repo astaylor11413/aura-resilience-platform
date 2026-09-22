@@ -881,15 +881,15 @@ export default function App() {
         }
       }}
     />
-    <Layer {...parishRiskLineLayer} />
+    <Layer {...parishRiskLineLayer} beforeId="substation-layer"/>
   </Source>
 )}
 
         {/* Dynamic Preventative Green Infrastructure Vector Render */}
         {geoJson.greenInfrastructureGeoJson && (
           <Source id="green-infrastructure-data" type="geojson" data={geoJson.greenInfrastructureGeoJson}>
-            <Layer {...greenInfrastructureFillLayer} />
-            <Layer {...greenInfrastructureLineLayer} />
+            <Layer {...greenInfrastructureFillLayer} beforeId="substation-layer" />
+            <Layer {...greenInfrastructureLineLayer} beforeId="substation-layer"/>
           </Source>
         )}
           {/* 4. GNN SUBSTATION NODES - RENDERED DIRECTLY TO DARK MAP BASE */}
