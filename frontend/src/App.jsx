@@ -1209,6 +1209,16 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
                 AURA Center
               </h1>
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!!globalState.airGapped}
+                onChange={(e) => setters.setAirGapped(e.target.checked)}
+                className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
+              />
+              <span>Air Gapped</span>
+            </label>
+            <div className="h-4 w-[1px] bg-slate-700" />
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <div className="relative inline-block text-left z-[9999]">
               <button
@@ -1247,16 +1257,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
               )}
             </div>
             <div className="h-4 w-[1px] bg-slate-700" />
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={!!globalState.airGapped}
-                onChange={(e) => setters.setAirGapped(e.target.checked)}
-                className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
-              />
-              <span>Air Gapped</span>
-            </label>
-            <div className="h-4 w-[1px] bg-slate-700" />
+            
 
             {/* New Predictive Planning Mode Checkbox */}
             <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-mono text-emerald-400 font-semibold hover:text-emerald-300">
