@@ -1213,7 +1213,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
         <header className="col-span-1 md:col-span-12 h-14 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-xl flex items-center justify-between px-6 pointer-events-auto order-first md:order-none">
           <div className="flex items-center gap-3">
             <div className={`h-3 w-3 rounded-full ${calculatedGridState === 'NOMINAL' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
-            <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Command Center</h1>
+            <h1 className="text-sm font-bold tracking-widest text-white uppercase">AURA Center</h1>
           </div>
           <div className="flex items-center gap-6 font-mono text-xs text-slate-400">
             <div className="relative inline-block text-left">
@@ -1221,7 +1221,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
                 onClick={() => setIsOpen(!isOpen)}
                 className="bg-white/5 hover:bg-white/10 text-[10px] text-slate-300 px-3 py-1.5 rounded border border-white/10 transition-colors flex items-center gap-1.5"
               >
-                <span>EXPORT GIS DATA</span>
+                <span>EXPORT GIS</span>
                 <span className="text-[8px] text-slate-400">▼</span>
               </button>
 
@@ -1261,7 +1261,7 @@ const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
                 onChange={(e) => setters.setAirGapped(e.target.checked)}
                 className="rounded bg-slate-950 border-white/10 text-purple-600 focus:ring-0 w-3 h-3"
               />
-              <span>Air Gapped Mode</span>
+              <span>Air Gapped</span>
             </label>
             <div className="h-4 w-[1px] bg-slate-700" />
 
