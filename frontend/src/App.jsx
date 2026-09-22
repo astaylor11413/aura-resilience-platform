@@ -187,6 +187,20 @@ const greenRoof3DLayer = {
   }
 };
 
+const urbanBioswaleLayer = {
+  id: 'urban-street-bioswales',
+  source: 'composite',
+  'source-layer': 'road',
+  type: 'line',
+  minzoom: 13,
+  paint: {
+    'line-color': '#34d399', // Mint green vegetation strip
+    'line-width': ['*', globalState.greenVectorSlider, 2.5], // Expands line width as slider increases
+    'line-opacity': 0.7,
+    'line-dasharray': [1, 2] // Dashed tree/bioswale corridor pattern
+  }
+};
+
 const routingLayer = {
   id: 'routing-layer',
   type: 'line',
@@ -1007,6 +1021,19 @@ const dynamicGreenGeoJson = useMemo(() => {
           </Source>
         )}
         */}
+        
+{globalState.is3DViewActive && (
+  <Layer 
+    {...urbanBioswaleLayer}
+    filter={[
+      'match',
+      ['get', 'class'],
+      ['street', 'primary', 'secondary', 'tertiary', 'residential'],
+      true,
+      false
+    ]}
+  />
+)}
 
         {/* Render 3D Green Roofs on top of existing Mapbox buildings */}
 {globalState.isPredictiveMode && globalState.is3DViewActive && (
