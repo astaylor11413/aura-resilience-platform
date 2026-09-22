@@ -307,8 +307,9 @@ export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [citizenReports, setCitizenReports] = useState([]);
   const [cursor, setCursor] = useState('auto');
-  const onMouseEnter = useCallback(() => setCursor('pointer'), []);
-  const onMouseLeave = useCallback(() => setCursor('auto'), []);
+  //State to track animation frame offset
+  const [dashStep, setDashStep] = useState(0);
+  const animFrameRef = useRef(null);
   //hover state tracking inside App component
   const [hoveredParishName, setHoveredParishName] = useState(null);
   
@@ -373,6 +374,25 @@ const urbanBioswaleLayer = {
       }
     }
     prepareEdge();
+  }, []);
+
+  // Animation loop updating dashStep for aid routes continuously
+  useEffect(() => {
+    let step = 0;
+    const animate = () => {
+      step = (step + 0.5) % 100; // Adjust '0.5' to speed up or slow down movement
+      setDashStep(step);
+      animFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    // Clean up animation on unmount
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
   }, []);
 
   // Compute metrics: time vs structural footprints
@@ -798,6 +818,9 @@ const dynamicGreenGeoJson = useMemo(() => {
   };
 }, [activeParishCenter, globalState.greenVectorSlider]);
 
+const progress = dashStep / 100;
+const animatedDashArray = [0, progress * 4, 3, (1 - progress) * 4];
+
   return (
     <div className="relative w-screen min-h-screen md:h-screen md:overflow-hidden bg-slate-950 text-slate-100 font-sans">
 
@@ -878,18 +901,16 @@ const dynamicGreenGeoJson = useMemo(() => {
           {showRoutingLayer && activeRoutingGeoJson.features?.length > 0 && (
             <Source id="routing-data" type="geojson" data={activeRoutingGeoJson}>
               <Layer {...routingLayer} />
-              <Layer
-                id="routing-labels"
-                type="symbol"
-                layout={{
-                  'text-field': ['get', 'urgency'],
-                  'text-size': 10,
-                  'text-offset': [0, -1],
-                  'text-anchor': 'bottom',
-                  'symbol-placement': 'line'
-                }}
-                paint={{ 'text-color': '#ffffff' }}
-              />
+              {/* Animated Dash Array Layer */}
+          <Layer
+            id="mutual-aid-animated-dash"
+            type="line"
+            paint={{
+              'line-color': '#34d399', // Bright active flow color
+              'line-width': 4,
+              'line-dasharray': animatedDashArray
+            }}
+          />
               <Layer
                 id="routing-arrows"
                 type="symbol"
@@ -898,9 +919,9 @@ const dynamicGreenGeoJson = useMemo(() => {
                   'symbol-spacing': 20,
                   'text-field': '▶',
                   'text-size': 40,
-                  'text-keep-upright': true
+                  'text-keep-upright': false
                 }}
-                paint={{ 'text-color': '#ffffff' }}
+                paint={{ 'text-color': '#ffffff', 'text-opacity': 0.8 }}
               />
             </Source>            
           )}
