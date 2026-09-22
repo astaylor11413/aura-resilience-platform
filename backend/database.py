@@ -73,13 +73,13 @@ mock_ocean_anomalies = [
 # Supply/Demand Network
 mock_supply_db = [
     {"restaurant_id": "rest-01", "restaurant_name": "Kingston Central Kitchen", "coordinates": [-76.79, 17.98], "verification_permit": "JAM-FOOD-001"},
-    {"restaurant_id": "rest-02", "restaurant_name": "Portmore Community Hub", "coordinates": [-76.88, 17.96], "verification_permit": "JAM-FOOD-002"},
+    {"restaurant_id": "rest-02", "restaurant_name": "Portmore Community Hub", "coordinates": [-76.89, 17.94], "verification_permit": "JAM-FOOD-002"},
     {"restaurant_id": "rest-03", "restaurant_name": "St. Andrew Relief Station", "coordinates": [-76.77, 18.01], "verification_permit": "JAM-FOOD-003"}
 ]
 
 mock_demand_db = [ 
     {"shelter_id": "shelter-01", "shelter_name": "National Arena Center", "coordinates": [-76.77, 17.99], "urgency_level": "CRITICAL"},
-    {"shelter_id": "shelter-02", "shelter_name": "Portmore Civic Refuge", "coordinates": [-76.89, 17.94], "urgency_level": "HIGH"},
+    {"shelter_id": "shelter-02", "shelter_name": "Portmore Civic Refuge", "coordinates": [-76.88, 17.96], "urgency_level": "HIGH"},
     {"shelter_id": "shelter-03", "shelter_name": "Papine Academic Shelter", "coordinates": [-76.74, 18.02], "urgency_level": "MEDIUM"}
 ]
 
