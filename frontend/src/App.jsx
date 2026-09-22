@@ -490,121 +490,108 @@ const urbanBioswaleLayer = {
     ];
 
     tickerRef.current = setInterval(async () => {
-      let currentStepValue;
-
       setCurrentTimeStep(prevStep => {
         const nextStep = prevStep + 1;
-        currentStepValue = nextStep;
 
         const matchingMilestone = simulationTimeline.find(item => item.step === nextStep);
         if (matchingMilestone) {
           setCurrentAlert(matchingMilestone.alert);
         }
 
+        // TRIGGER PEAK AT STEP 11
         if (nextStep >= 11) {
           clearInterval(tickerRef.current);
-        }
-        return nextStep;
-      });
 
-      // Trigger final phase when timeline reaches its peak
-      if (currentStepValue >= 11) {
-        clearInterval(tickerRef.current);
+          // Scroll to the Logistics Transcriber container
+          const layoutPanels = Array.from(document.querySelectorAll('div'));
+          const transcriberPanel = layoutPanels.find(el => {
+            const headingText = el.querySelector('h3, h2')?.textContent?.toLowerCase() || '';
+            return headingText.includes('tactical voice transcriber') || headingText.includes('logistics transcriber');
+          });
 
-        // FIX: Case-insensitive search to reliably grab the element node
-        const layoutPanels = Array.from(document.querySelectorAll('details'));
-        const transcriberPanel = layoutPanels.find(el => {
-          const headingText = el.querySelector('h2')?.textContent?.toLowerCase() || '';
-          return headingText.includes('logistics transcriber');
-        });
+          if (transcriberPanel) {
+            transcriberPanel.scrollIntoView({ behavior: 'smooth' });
+          }
 
-        if (transcriberPanel) {
-          transcriberPanel.open = true;
-          console.log("Aura Automation: Successfully forced Logistics Transcriber open attribute.");
-        }
+          // Typewriter + Triage Execution
+          setTimeout(() => {
+            const incidentReport = "CRITICAL INUNDATION: Severe coastal flooding and flash surge overtopping the entire Palisadoes sector. Massive sea water drowning out lower surface zones.";
+            
+            let currentCharacterIndex = 0;
+            setReportText("");
+            setIsProcessing(true);
 
-       // Step 2: Open up a typewriter effect inside the 600ms UI layout transition buffer
-        setTimeout(() => {
-          const incidentReport = "CRITICAL INUNDATION: Severe coastal flooding and flash surge overtopping the entire Palisadoes sector. Massive sea water drowning out lower surface zones.";
-          
-          let currentCharacterIndex = 0;
-          setReportText(""); // Clear the text field to start typing clean
-          setIsProcessing(true); // Turn on processing spinner styling early
+            const typeWriterTimer = setInterval(async () => {
+              currentCharacterIndex++;
+              setReportText(incidentReport.substring(0, currentCharacterIndex));
 
-          // Create a rapid internal character writer timer loop
-          const typeWriterTimer = setInterval(async () => {
-            setReportText(() => incidentReport.substring(0, currentCharacterIndex + 1));
-            currentCharacterIndex++;
+              if (currentCharacterIndex >= incidentReport.length) {
+                clearInterval(typeWriterTimer);
 
-            // When the full message has finished typing out sequentially:
-            if (currentCharacterIndex >= incidentReport.length) {
-              clearInterval(typeWriterTimer);
-
-              // Push the typed text block directly through your core triage engines
-              try {
-                let tacticalPlaybook = "";
-                
-                if (globalState.airGapped) {
-                  const result = await runLocalTriage(incidentReport, globalState);
-                  tacticalPlaybook = result.actionable_tactical_playbook;
-                  if (result.matched_node_threat_index !== null) {
-                    setters.setActiveThreatIndex(result.matched_node_threat_index);
-                  }
-                } else {
-                  const formData = new FormData();
-                  formData.append('text', incidentReport);
-                  formData.append('air_gapped', 'false');
-                  
-                  const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
-                    method: 'POST',
-                    body: formData
-                  });
-                  const resData = await response.json();
-                  tacticalPlaybook = resData.actionable_tactical_playbook;
-                }
-
-                // Voice distribution audio trigger chain
-                const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
-                
                 try {
-                  const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: voiceBroadcastText })
-                  });
-
-                  if (audioResponse.ok && audioResponse.headers.get('content-type')?.includes('audio/mpeg')) {
-                    const audioBlob = await audioResponse.blob();
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    await audio.play();
+                  let tacticalPlaybook = "";
+                  
+                  if (globalState.airGapped) {
+                    const result = await runLocalTriage(incidentReport, globalState);
+                    tacticalPlaybook = result.actionable_tactical_playbook;
+                    if (result.matched_node_threat_index !== null) {
+                      setters.setActiveThreatIndex(result.matched_node_threat_index);
+                    }
                   } else {
+                    const formData = new FormData();
+                    formData.append('text', incidentReport);
+                    formData.append('air_gapped', 'false');
+                    
+                    const response = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/report', {
+                      method: 'POST',
+                      body: formData
+                    });
+                    const resData = await response.json();
+                    tacticalPlaybook = resData.actionable_tactical_playbook;
+                  }
+
+                  const voiceBroadcastText = `Wah gwaan command center. Triage complete. ${tacticalPlaybook}`;
+                  
+                  try {
+                    const audioResponse = await fetch('https://aura-resilience-platform-qa.onrender.com/api/v1/voice/broadcast', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ text: voiceBroadcastText })
+                    });
+
+                    if (audioResponse.ok && audioResponse.headers.get('content-type')?.includes('audio/mpeg')) {
+                      const audioBlob = await audioResponse.blob();
+                      const audioUrl = URL.createObjectURL(audioBlob);
+                      const audio = new Audio(audioUrl);
+                      await audio.play();
+                    } else {
+                      window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
+                    }
+                  } catch (audioErr) {
+                    console.warn("Audio connection bypassed, dropping to local speech synthesis:", audioErr);
                     window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
                   }
-                } catch (audioErr) {
-                  console.warn("Audio connection bypassed, dropping to local speech synthesis:", audioErr);
-                  window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceBroadcastText));
-                }
 
-                // Display custom Alert popup overlay window to user
-                alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
-                
-                // Cleanup and map activation layout states
-                if (transcriberPanel) transcriberPanel.open = false;
-                setShowImpactAnalysis(false); 
-                setShowRoutingLayer(true);
-                
-              } catch (err) {
-                console.error("Automated triage integration runner failure:", err);
-              } finally {
-                setIsProcessing(false);
+                  alert(`[AURA EDGE PLAYBOOK] \n\n${tacticalPlaybook}`);
+                  
+                  setShowImpactAnalysis(false); 
+                  setShowRoutingLayer(true);
+                  
+                } catch (err) {
+                  console.error("Automated triage integration runner failure:", err);
+                } finally {
+                  setIsProcessing(false);
+                }
               }
-            }
-          }, 35); // 35ms per character creates a fast, energetic human typing speed simulation
-        }, 600);
-      }
+            }, 35);
+          }, 600);
+        }
+
+        return nextStep;
+      });
     }, 2000);
-  };
+      
+  
 
   const handleProcessTransmission = async () => {
   if (!reportText.trim()) return;
